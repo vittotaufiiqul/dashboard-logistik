@@ -119,6 +119,7 @@
             padding: 16px;
             border-bottom: 1px solid var(--border);
             background-color: var(--surface-1);
+            white-space: nowrap;
         }
 
         td {
@@ -134,6 +135,7 @@
             border-radius: 4px;
             font-size: 12px;
             font-weight: 500;
+            white-space: nowrap;
         }
 
         .status-urgent {
@@ -167,7 +169,7 @@
         <button class="tab-btn active" onclick="openTab('tab-compare')">Compare QTY</button>
         <button class="tab-btn" onclick="openTab('tab-bongkar')">Admin Bongkar</button>
         <button class="tab-btn" onclick="openTab('tab-putway')">Permintaan Putway</button>
-        <button class="tab-btn" onclick="openTab('tab-stok')">Sisa Stok (Per Tanggal)</button>
+        <button class="tab-btn" onclick="openTab('tab-stok')">Sisa Stok</button>
     </div>
 
     <div id="loading">Memuat data dari Google Sheets...</div>
@@ -260,7 +262,7 @@
         event.currentTarget.classList.add('active');
     }
 
-    // Fungsi Fetch dan Parse CSV
+    // Fungsi Fetch dan Parse CSV dengan penanganan Error Vercel/CORS
     async function fetchData() {
         try {
             const [resBongkar, resPutway] = await Promise.all([
@@ -268,8 +270,16 @@
                 fetch(urlPutway)
             ]);
 
+            if (!resBongkar.ok || !resPutway.ok) {
+                throw new Error(`Akses diblokir (Status: ${resBongkar.status}). Pastikan file sudah diatur "Publikasikan ke Web".`);
+            }
+
             const csvBongkar = await resBongkar.text();
             const csvPutway = await resPutway.text();
+
+            if (csvBongkar.includes("<!DOCTYPE html>")) {
+                throw new Error("Gagal mengambil data. Google Sheets meminta halaman login. Pastikan tahap 'Publikasikan ke Web' sudah dilakukan.");
+            }
 
             Papa.parse(csvBongkar, {
                 header: true,
@@ -290,22 +300,32 @@
             document.getElementById('loading').style.display = 'none';
             renderTables();
         } catch (error) {
-            document.getElementById('loading').innerText = "Gagal memuat data. Pastikan Google Sheet sudah 'Publik' / 'Anyone with the link can view'.";
+            const loadingElement = document.getElementById('loading');
+            loadingElement.innerText = "Error: " + error.message;
+            loadingElement.style.color = "#DC2626"; 
             console.error(error);
         }
     }
 
-    // Render semua tabel
+    // Fungsi Render Super Cepat untuk ribuan baris data
     function renderTables() {
         const tbodyBongkar = document.querySelector('#table-bongkar tbody');
         const tbodyPutway = document.querySelector('#table-putway tbody');
         const tbodyCompare = document.querySelector('#table-compare tbody');
         const tbodyStok = document.querySelector('#table-stok tbody');
 
-        // 1. Render Admin Bongkar
+        let htmlBongkar = "";
+        let htmlStok = "";
+        let htmlPutway = "";
+        let htmlCompare = "";
+
+        const bongkarIndex = {}; 
+
+        // 1. Proses Admin Bongkar & Buat Kamus Data
         dataBongkar.forEach(row => {
-            if(!row['TANGGAL']) return; // Skip baris kosong
-            tbodyBongkar.innerHTML += `
+            if(!row['TANGGAL']) return; 
+            
+            htmlBongkar += `
                 <tr>
                     <td>${row['TANGGAL']}</td>
                     <td>${row['KODE SKU']}</td>
@@ -317,8 +337,7 @@
                 </tr>
             `;
 
-            // Sekaligus render tab Sisa Stok per tanggal
-            tbodyStok.innerHTML += `
+            htmlStok += `
                 <tr>
                     <td>${row['TANGGAL']}</td>
                     <td>${row['KODE SKU']}</td>
@@ -326,12 +345,14 @@
                     <td class="mono">${row['SISA STOCK'] || '0'}</td>
                 </tr>
             `;
+
+            bongkarIndex[row['KODE SKU']] = row;
         });
 
-        // 2. Render Permintaan Putway
+        // 2. Proses Permintaan Putway
         dataPutway.forEach(row => {
             if(!row['TGL']) return;
-            tbodyPutway.innerHTML += `
+            htmlPutway += `
                 <tr>
                     <td>${row['TGL']}</td>
                     <td>${row['KODE SKU']}</td>
@@ -344,27 +365,21 @@
             `;
         });
 
-        // 3. Render Compare (Mencocokkan QTY Bongkar dan QTY Ambil)
+        // 3. Proses Compare (Berdasarkan Kamus)
         dataPutway.forEach(putway => {
             if(!putway['TGL']) return;
 
-            // Cari bongkar yang SKU-nya sama. 
-            // Catatan: Jika ingin per tanggal juga, tambahkan: && bongkar['TANGGAL'] === putway['TGL']
-            const bongkarMatch = dataBongkar.find(bongkar => bongkar['KODE SKU'] === putway['KODE SKU']);
+            const bongkarMatch = bongkarIndex[putway['KODE SKU']];
             
             const qtyBongkar = bongkarMatch ? parseInt(bongkarMatch['QTY BONGKAR'] || 0) : 0;
             const qtyAmbil = parseInt(putway['QTY AMBIL'] || 0);
             const selisih = qtyBongkar - qtyAmbil;
 
-            let statusHtml = '';
-            // Logika Status: Jika QTY Bongkar < QTY Ambil, maka Urgent (Minus).
-            if (selisih < 0) {
-                statusHtml = `<span class="status-badge status-urgent">Kekurangan</span>`;
-            } else {
-                statusHtml = `<span class="status-badge status-normal">Cukup/Lebih</span>`;
-            }
+            let statusHtml = selisih < 0 
+                ? `<span class="status-badge status-urgent">Kekurangan</span>` 
+                : `<span class="status-badge status-normal">Cukup/Lebih</span>`;
 
-            tbodyCompare.innerHTML += `
+            htmlCompare += `
                 <tr>
                     <td>${putway['TGL']}</td>
                     <td>${putway['KODE SKU']}</td>
@@ -376,10 +391,16 @@
                 </tr>
             `;
         });
+
+        // 4. Render semua teks HTML ke layar dalam satu kali eksekusi
+        tbodyBongkar.innerHTML = htmlBongkar;
+        tbodyStok.innerHTML = htmlStok;
+        tbodyPutway.innerHTML = htmlPutway;
+        tbodyCompare.innerHTML = htmlCompare;
     }
 
-    // Jalankan fetch saat halaman dimuat
-    window.onload = fetchData;
+    // Jalankan sistem setelah halaman benar-benar siap
+    document.addEventListener('DOMContentLoaded', fetchData);
 </script>
 
 </body>
