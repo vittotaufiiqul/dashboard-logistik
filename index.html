@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Sinkronisasi Logistik</title>
     
-    <!-- Parser untuk baca data Google Sheets -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <!-- Library SheetJS untuk Export ke Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <style>
@@ -24,6 +22,8 @@
             --border: #E5E7EB;
             --urgent: #DC2626;
             --urgent-bg: #FEF2F2;
+            --warning: #D97706;
+            --warning-bg: #FFFBEB;
             --normal: #059669;
             --normal-bg: #ECFDF5;
         }
@@ -64,7 +64,6 @@
             margin: 0 0 24px 0;
         }
 
-        /* Desain Filter Tanggal & Tombol Export */
         .filter-section {
             background-color: var(--canvas);
             padding: 16px 24px;
@@ -102,7 +101,6 @@
             box-shadow: 0 0 0 2px var(--primary-light);
         }
 
-        /* Desain Tombol Export (Carbon Health Style) */
         .btn-export {
             background-color: var(--primary);
             color: var(--on-primary);
@@ -113,7 +111,7 @@
             font-weight: 500;
             cursor: pointer;
             transition: background-color 180ms ease;
-            margin-left: auto; /* Mendorong tombol otomatis ke kanan */
+            margin-left: auto;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -202,6 +200,11 @@
             background-color: var(--urgent-bg);
         }
 
+        .status-warning {
+            color: var(--warning);
+            background-color: var(--warning-bg);
+        }
+
         .status-normal {
             color: var(--normal);
             background-color: var(--normal-bg);
@@ -223,16 +226,11 @@
         <p>Menampilkan dan membandingkan data live dari spreadsheet Admin Bongkar dan Putway.</p>
     </header>
 
-    <!-- Filter Tanggal & Tombol Export -->
     <div class="filter-section" id="filter-container" style="display: none;">
         <label for="dateFilter">Filter Tanggal:</label>
-        <select id="dateFilter" onchange="applyFilter()">
-            <!-- Opsi otomatis diisi JavaScript -->
-        </select>
+        <select id="dateFilter" onchange="applyFilter()"></select>
         
-        <!-- Tombol Export Baru -->
         <button class="btn-export" onclick="exportToExcel()">
-            <!-- Ikon Download SVG -->
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="7 10 12 15 17 10"></polyline>
@@ -324,7 +322,6 @@
 
     let dataBongkar = [];
     let dataPutway = [];
-    let bongkarIndex = {}; 
 
     function openTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -378,7 +375,7 @@
             document.getElementById('loading').style.display = 'none';
             document.getElementById('filter-container').style.display = 'flex';
             
-            buildIndexAndFilter(); 
+            buildFilterAndRender(); 
         } catch (error) {
             const loadingElement = document.getElementById('loading');
             loadingElement.innerText = "Error: " + error.message;
@@ -387,21 +384,11 @@
         }
     }
 
-    function buildIndexAndFilter() {
+    function buildFilterAndRender() {
         const dateSet = new Set();
-        bongkarIndex = {};
 
-        dataBongkar.forEach(row => {
-            if(!row['TANGGAL']) return; 
-            const dateOnly = getDateOnly(row['TANGGAL']);
-            dateSet.add(dateOnly);
-            bongkarIndex[dateOnly + "_" + row['KODE SKU']] = row;
-        });
-
-        dataPutway.forEach(row => {
-            if(!row['TGL']) return;
-            dateSet.add(getDateOnly(row['TGL']));
-        });
+        dataBongkar.forEach(row => { if(row['TANGGAL']) dateSet.add(getDateOnly(row['TANGGAL'])); });
+        dataPutway.forEach(row => { if(row['TGL']) dateSet.add(getDateOnly(row['TGL'])); });
 
         const uniqueDates = Array.from(dateSet).sort((a, b) => parseDateString(b) - parseDateString(a));
 
@@ -420,28 +407,29 @@
     }
 
     function applyFilter() {
-        const selectedDate = document.getElementById('dateFilter').value;
-        renderTables(selectedDate);
-    }
-
-    function renderTables(filterDate) {
+        const filterDate = document.getElementById('dateFilter').value;
         const tbodyBongkar = document.querySelector('#table-bongkar tbody');
         const tbodyPutway = document.querySelector('#table-putway tbody');
         const tbodyCompare = document.querySelector('#table-compare tbody');
         const tbodyStok = document.querySelector('#table-stok tbody');
 
         let htmlBongkar = "", htmlStok = "", htmlPutway = "", htmlCompare = "";
+        
+        // Objek untuk menampung gabungan data (Full Outer Join) untuk tabel Compare
+        const compareData = {};
 
+        // 1. Loop Data Bongkar
         dataBongkar.forEach(row => {
             if(!row['TANGGAL']) return; 
             const dateOnly = getDateOnly(row['TANGGAL']);
+            const sku = row['KODE SKU'];
             
             if (filterDate !== "ALL" && dateOnly !== filterDate) return; 
             
             htmlBongkar += `
                 <tr>
                     <td>${row['TANGGAL']}</td>
-                    <td>${row['KODE SKU']}</td>
+                    <td>${sku}</td>
                     <td>${row['NAMA SKU']}</td>
                     <td>${row['NOMOR KARUNG'] || '-'}</td>
                     <td class="mono">${row['QTY BONGKAR'] || '0'}</td>
@@ -453,48 +441,78 @@
             htmlStok += `
                 <tr>
                     <td>${row['TANGGAL']}</td>
-                    <td>${row['KODE SKU']}</td>
+                    <td>${sku}</td>
                     <td>${row['NAMA SKU']}</td>
                     <td class="mono">${row['SISA STOCK'] || '0'}</td>
                 </tr>
             `;
+
+            // Tambahkan SKU ke data Compare
+            const qtyBongkar = parseInt(row['QTY BONGKAR'] || 0);
+            if(!compareData[sku]) {
+                compareData[sku] = { tgl: dateOnly, sku: sku, nama: row['NAMA SKU'], qtyBongkar: qtyBongkar, qtyAmbil: 0 };
+            } else {
+                compareData[sku].qtyBongkar += qtyBongkar;
+            }
         });
 
+        // 2. Loop Data Putway
         dataPutway.forEach(putway => {
             if(!putway['TGL']) return;
             const putwayDate = getDateOnly(putway['TGL']);
+            const sku = putway['KODE SKU'];
 
             if (filterDate !== "ALL" && putwayDate !== filterDate) return;
 
             htmlPutway += `
                 <tr>
                     <td>${putway['TGL']}</td>
-                    <td>${putway['KODE SKU']}</td>
+                    <td>${sku}</td>
                     <td>${putway['NAMA SKU']}</td>
-                    <td>${rowKonveksi = putway['KONVEKSI'] || '-'}</td>
+                    <td>${putway['KONVEKSI'] || '-'}</td>
                     <td class="mono">${putway['TOTAL PERMINTAAN'] || '0'}</td>
                     <td class="mono">${putway['QTY AMBIL'] || '0'}</td>
                     <td>${putway['PIC'] || '-'}</td>
                 </tr>
             `;
 
-            const bongkarMatch = bongkarIndex[putwayDate + "_" + putway['KODE SKU']];
-            
-            const qtyBongkar = bongkarMatch ? parseInt(bongkarMatch['QTY BONGKAR'] || 0) : 0;
+            // Tambahkan SKU ke data Compare (Atau update jika SKU sudah dicatat dari Bongkar)
             const qtyAmbil = parseInt(putway['QTY AMBIL'] || 0);
-            const selisih = qtyBongkar - qtyAmbil;
+            if(!compareData[sku]) {
+                compareData[sku] = { tgl: putwayDate, sku: sku, nama: putway['NAMA SKU'], qtyBongkar: 0, qtyAmbil: qtyAmbil };
+            } else {
+                compareData[sku].qtyAmbil += qtyAmbil;
+                // Pastikan nama SKU tetap terisi jika di Bongkar kosong
+                compareData[sku].nama = compareData[sku].nama || putway['NAMA SKU'];
+            }
+        });
 
-            let statusHtml = selisih < 0 
-                ? `<span class="status-badge status-urgent">Kekurangan</span>` 
-                : `<span class="status-badge status-normal">Cukup/Lebih</span>`;
+        // 3. Render Hasil Compare Gabungan (Full Outer Join)
+        Object.values(compareData).forEach(item => {
+            const selisih = item.qtyBongkar - item.qtyAmbil;
+            let statusHtml = "";
+
+            if (item.qtyBongkar === 0 && item.qtyAmbil > 0) {
+                // Ada di Putway tapi tidak ada di Bongkar
+                statusHtml = `<span class="status-badge status-urgent">Loss Scan</span>`;
+            } else if (item.qtyBongkar > 0 && item.qtyAmbil === 0) {
+                // Ada di Bongkar tapi tidak ada di Putway
+                statusHtml = `<span class="status-badge status-warning">Unknown</span>`;
+            } else if (selisih < 0) {
+                // Ada di keduanya, tapi jumlah Bongkar kurang dari Ambil
+                statusHtml = `<span class="status-badge status-urgent">Kekurangan</span>`;
+            } else {
+                // Pas atau lebih
+                statusHtml = `<span class="status-badge status-normal">Cukup/Lebih</span>`;
+            }
 
             htmlCompare += `
                 <tr>
-                    <td>${putway['TGL']}</td>
-                    <td>${putway['KODE SKU']}</td>
-                    <td>${putway['NAMA SKU']}</td>
-                    <td class="mono">${qtyBongkar}</td>
-                    <td class="mono">${qtyAmbil}</td>
+                    <td>${item.tgl}</td>
+                    <td>${item.sku}</td>
+                    <td>${item.nama}</td>
+                    <td class="mono">${item.qtyBongkar}</td>
+                    <td class="mono">${item.qtyAmbil}</td>
                     <td class="mono">${selisih > 0 ? '+'+selisih : selisih}</td>
                     <td>${statusHtml}</td>
                 </tr>
@@ -507,35 +525,23 @@
         tbodyCompare.innerHTML = htmlCompare;
     }
 
-    // Fungsi Baru: Export ke Excel
     function exportToExcel() {
         const selectedDate = document.getElementById('dateFilter').value;
-        // Format penamaan file agar rapi (misal: Laporan_Logistik_10-07-2026.xlsx)
         const dateStrForFile = selectedDate === 'ALL' ? 'Semua_Tanggal' : selectedDate.replace(/\//g, '-');
         const fileName = `Laporan_Logistik_${dateStrForFile}.xlsx`;
 
-        // Ambil elemen HTML dari ke-4 tabel yang sudah ter-filter
         const tableCompare = document.getElementById('table-compare');
         const tableBongkar = document.getElementById('table-bongkar');
         const tablePutway = document.getElementById('table-putway');
         const tableStok = document.getElementById('table-stok');
 
-        // Buat buku kerja (Workbook) Excel baru
         const wb = XLSX.utils.book_new();
 
-        // Konversi tiap tabel HTML menjadi Lembar Kerja (Worksheet) Excel
-        const wsCompare = XLSX.utils.table_to_sheet(tableCompare);
-        const wsBongkar = XLSX.utils.table_to_sheet(tableBongkar);
-        const wsPutway = XLSX.utils.table_to_sheet(tablePutway);
-        const wsStok = XLSX.utils.table_to_sheet(tableStok);
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(tableCompare), "Compare QTY");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(tableBongkar), "Admin Bongkar");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(tablePutway), "Permintaan Putway");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(tableStok), "Sisa Stok");
 
-        // Masukkan Worksheet ke dalam Workbook
-        XLSX.utils.book_append_sheet(wb, wsCompare, "Compare QTY");
-        XLSX.utils.book_append_sheet(wb, wsBongkar, "Admin Bongkar");
-        XLSX.utils.book_append_sheet(wb, wsPutway, "Permintaan Putway");
-        XLSX.utils.book_append_sheet(wb, wsStok, "Sisa Stok");
-
-        // Proses Unduh
         XLSX.writeFile(wb, fileName);
     }
 
