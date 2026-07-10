@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Sinkronisasi Logistik</title>
-    <!-- Menggunakan PapaParse untuk membaca format data dari Google Sheets -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         /* Carbon Health Design System */
@@ -32,13 +31,11 @@
             line-height: 1.65;
         }
 
-        /* Typography khusus untuk angka (Monospace) */
         .mono {
             font-family: "JetBrains Mono", Menlo, monospace;
             font-size: 13px;
         }
 
-        /* Layout & Spacing */
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -46,7 +43,7 @@
         }
 
         header {
-            margin-bottom: 32px;
+            margin-bottom: 24px;
         }
 
         h1 {
@@ -61,7 +58,44 @@
             margin: 0 0 24px 0;
         }
 
-        /* Navigasi Tab */
+        /* Desain Filter Tanggal */
+        .filter-section {
+            background-color: var(--canvas);
+            padding: 16px 24px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .filter-section label {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .filter-section select {
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 15px;
+            color: var(--ink);
+            background-color: var(--surface-1);
+            outline: none;
+            cursor: pointer;
+            min-width: 200px;
+            transition: all 180ms ease;
+        }
+
+        .filter-section select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px var(--primary-light);
+        }
+
         .tabs {
             display: flex;
             gap: 16px;
@@ -90,7 +124,6 @@
             border-bottom: 2px solid var(--primary);
         }
 
-        /* Tampilan Konten & Tabel */
         .tab-content {
             display: none;
             background-color: var(--canvas);
@@ -128,7 +161,6 @@
             font-size: 15px;
         }
 
-        /* Status Badge */
         .status-badge {
             display: inline-block;
             padding: 4px 8px;
@@ -148,7 +180,6 @@
             background-color: var(--normal-bg);
         }
 
-        /* Loading */
         #loading {
             text-align: center;
             padding: 40px;
@@ -164,6 +195,14 @@
         <h1>Warehouse Sync & Compare</h1>
         <p>Menampilkan dan membandingkan data live dari spreadsheet Admin Bongkar dan Putway.</p>
     </header>
+
+    <!-- Fitur Filter Tanggal Baru -->
+    <div class="filter-section" id="filter-container" style="display: none;">
+        <label for="dateFilter">Filter Tanggal:</label>
+        <select id="dateFilter" onchange="applyFilter()">
+            <!-- Opsi akan diisi otomatis oleh JavaScript -->
+        </select>
+    </div>
 
     <div class="tabs">
         <button class="tab-btn active" onclick="openTab('tab-compare')">Compare QTY</button>
@@ -246,15 +285,13 @@
 
 <script>
     const SHEET_ID = '1tVpM43QkTT_nMayhjJJpfboIS25-V9dgI6Widk0GAcg';
-    
-    // URL CSV Export Google Sheets Public
     const urlBongkar = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=TIM_1_BONGKAR`;
     const urlPutway = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=REKAP_DATA_PUTWAY`;
 
     let dataBongkar = [];
     let dataPutway = [];
+    let bongkarIndex = {}; // Kamus data global untuk pencocokan
 
-    // Fungsi ganti tab
     function openTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -262,7 +299,22 @@
         event.currentTarget.classList.add('active');
     }
 
-    // Fungsi Fetch dan Parse CSV dengan penanganan Error Vercel/CORS
+    // Fungsi mengambil tanggal saja (tanpa jam/menit)
+    function getDateOnly(dateString) {
+        if (!dateString) return "";
+        return dateString.split(' ')[0].trim(); // Mengubah "10/07/2026 10:05:57" jadi "10/07/2026"
+    }
+
+    // Fungsi konversi format DD/MM/YYYY ke format angka bantu sorting
+    function parseDateString(dateStr) {
+        if(!dateStr) return 0;
+        const parts = dateStr.split('/');
+        if(parts.length === 3) {
+            return parseInt(parts[2] + parts[1].padStart(2, '0') + parts[0].padStart(2, '0'));
+        }
+        return 0; 
+    }
+
     async function fetchData() {
         try {
             const [resBongkar, resPutway] = await Promise.all([
@@ -282,23 +334,19 @@
             }
 
             Papa.parse(csvBongkar, {
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    dataBongkar = results.data;
-                }
+                header: true, skipEmptyLines: true,
+                complete: function(results) { dataBongkar = results.data; }
             });
 
             Papa.parse(csvPutway, {
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    dataPutway = results.data;
-                }
+                header: true, skipEmptyLines: true,
+                complete: function(results) { dataPutway = results.data; }
             });
 
             document.getElementById('loading').style.display = 'none';
-            renderTables();
+            document.getElementById('filter-container').style.display = 'flex';
+            
+            buildIndexAndFilter(); 
         } catch (error) {
             const loadingElement = document.getElementById('loading');
             loadingElement.innerText = "Error: " + error.message;
@@ -307,23 +355,64 @@
         }
     }
 
-    // Fungsi Render Super Cepat untuk ribuan baris data
-    function renderTables() {
+    function buildIndexAndFilter() {
+        const dateSet = new Set();
+        bongkarIndex = {};
+
+        // 1. Buat Kamus Data & Kumpulkan Tanggal Unik
+        dataBongkar.forEach(row => {
+            if(!row['TANGGAL']) return; 
+            const dateOnly = getDateOnly(row['TANGGAL']);
+            dateSet.add(dateOnly);
+            
+            // Kunci unik berdasarkan Tanggal + SKU untuk akurasi Compare
+            bongkarIndex[dateOnly + "_" + row['KODE SKU']] = row;
+        });
+
+        dataPutway.forEach(row => {
+            if(!row['TGL']) return;
+            dateSet.add(getDateOnly(row['TGL']));
+        });
+
+        // 2. Urutkan tanggal (Terbaru di atas)
+        const uniqueDates = Array.from(dateSet).sort((a, b) => parseDateString(b) - parseDateString(a));
+
+        // 3. Masukkan ke dalam Dropdown
+        const filterSelect = document.getElementById('dateFilter');
+        filterSelect.innerHTML = '<option value="ALL">Semua Tanggal (Memuat Lebih Lama)</option>';
+        
+        uniqueDates.forEach(date => {
+            if(date) filterSelect.innerHTML += `<option value="${date}">${date}</option>`;
+        });
+
+        // Pilih tanggal paling baru secara otomatis agar web langsung terbuka dengan ringan
+        if(uniqueDates.length > 0) {
+            filterSelect.value = uniqueDates[0]; 
+        }
+
+        // Mulai render tabel berdasarkan filter tanggal
+        applyFilter();
+    }
+
+    function applyFilter() {
+        const selectedDate = document.getElementById('dateFilter').value;
+        renderTables(selectedDate);
+    }
+
+    function renderTables(filterDate) {
         const tbodyBongkar = document.querySelector('#table-bongkar tbody');
         const tbodyPutway = document.querySelector('#table-putway tbody');
         const tbodyCompare = document.querySelector('#table-compare tbody');
         const tbodyStok = document.querySelector('#table-stok tbody');
 
-        let htmlBongkar = "";
-        let htmlStok = "";
-        let htmlPutway = "";
-        let htmlCompare = "";
+        let htmlBongkar = "", htmlStok = "", htmlPutway = "", htmlCompare = "";
 
-        const bongkarIndex = {}; 
-
-        // 1. Proses Admin Bongkar & Buat Kamus Data
+        // Render Bongkar & Sisa Stok (terfilter)
         dataBongkar.forEach(row => {
             if(!row['TANGGAL']) return; 
+            const dateOnly = getDateOnly(row['TANGGAL']);
+            
+            if (filterDate !== "ALL" && dateOnly !== filterDate) return; // Lewati jika tidak cocok
             
             htmlBongkar += `
                 <tr>
@@ -345,31 +434,29 @@
                     <td class="mono">${row['SISA STOCK'] || '0'}</td>
                 </tr>
             `;
-
-            bongkarIndex[row['KODE SKU']] = row;
         });
 
-        // 2. Proses Permintaan Putway
-        dataPutway.forEach(row => {
-            if(!row['TGL']) return;
-            htmlPutway += `
-                <tr>
-                    <td>${row['TGL']}</td>
-                    <td>${row['KODE SKU']}</td>
-                    <td>${row['NAMA SKU']}</td>
-                    <td>${row['KONVEKSI'] || '-'}</td>
-                    <td class="mono">${row['TOTAL PERMINTAAN'] || '0'}</td>
-                    <td class="mono">${row['QTY AMBIL'] || '0'}</td>
-                    <td>${row['PIC'] || '-'}</td>
-                </tr>
-            `;
-        });
-
-        // 3. Proses Compare (Berdasarkan Kamus)
+        // Render Putway & Compare (terfilter)
         dataPutway.forEach(putway => {
             if(!putway['TGL']) return;
+            const putwayDate = getDateOnly(putway['TGL']);
 
-            const bongkarMatch = bongkarIndex[putway['KODE SKU']];
+            if (filterDate !== "ALL" && putwayDate !== filterDate) return; // Lewati jika tidak cocok
+
+            htmlPutway += `
+                <tr>
+                    <td>${putway['TGL']}</td>
+                    <td>${putway['KODE SKU']}</td>
+                    <td>${putway['NAMA SKU']}</td>
+                    <td>${rowKonveksi = putway['KONVEKSI'] || '-'}</td>
+                    <td class="mono">${putway['TOTAL PERMINTAAN'] || '0'}</td>
+                    <td class="mono">${putway['QTY AMBIL'] || '0'}</td>
+                    <td>${putway['PIC'] || '-'}</td>
+                </tr>
+            `;
+
+            // Proses Compare berdasarkan Tanggal & SKU yang spesifik
+            const bongkarMatch = bongkarIndex[putwayDate + "_" + putway['KODE SKU']];
             
             const qtyBongkar = bongkarMatch ? parseInt(bongkarMatch['QTY BONGKAR'] || 0) : 0;
             const qtyAmbil = parseInt(putway['QTY AMBIL'] || 0);
@@ -392,14 +479,13 @@
             `;
         });
 
-        // 4. Render semua teks HTML ke layar dalam satu kali eksekusi
+        // Cetak ke layar
         tbodyBongkar.innerHTML = htmlBongkar;
         tbodyStok.innerHTML = htmlStok;
         tbodyPutway.innerHTML = htmlPutway;
         tbodyCompare.innerHTML = htmlCompare;
     }
 
-    // Jalankan sistem setelah halaman benar-benar siap
     document.addEventListener('DOMContentLoaded', fetchData);
 </script>
 
