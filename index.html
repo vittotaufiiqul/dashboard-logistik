@@ -19,6 +19,7 @@
             --ink-muted: #6B7280;
             --canvas: #FFFFFF;
             --surface-1: #F9FAFB;
+            --surface-2: #F3F4F6;
             --border: #E5E7EB;
             --urgent: #DC2626;
             --urgent-bg: #FEF2F2;
@@ -64,7 +65,6 @@
             margin: 0 0 24px 0;
         }
 
-        /* Desain Filter & Search */
         .filter-section {
             background-color: var(--canvas);
             padding: 16px 24px;
@@ -73,23 +73,24 @@
             margin-bottom: 24px;
             display: flex;
             align-items: center;
-            flex-wrap: wrap; /* Agar responsif jika layar kecil */
+            flex-wrap: wrap;
             gap: 16px;
             border-left: 4px solid var(--primary);
         }
 
         .filter-section label {
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 600;
             color: var(--ink);
+            margin-right: -8px;
         }
 
         .filter-section select, .filter-section input[type="text"] {
-            padding: 8px 16px;
+            padding: 8px 12px;
             border: 1px solid var(--border);
             border-radius: 6px;
             font-family: inherit;
-            font-size: 15px;
+            font-size: 14px;
             color: var(--ink);
             background-color: var(--surface-1);
             outline: none;
@@ -98,12 +99,11 @@
 
         .filter-section select {
             cursor: pointer;
-            min-width: 180px;
+            min-width: 160px;
         }
         
-        /* Desain Search Bar */
         .filter-section input[type="text"] {
-            min-width: 250px;
+            min-width: 220px;
         }
 
         .filter-section select:focus, .filter-section input[type="text"]:focus {
@@ -115,7 +115,7 @@
             background-color: var(--primary);
             color: var(--on-primary);
             border: none;
-            padding: 10px 20px;
+            padding: 10px 16px;
             border-radius: 6px;
             font-size: 14px;
             font-weight: 500;
@@ -165,8 +165,7 @@
             border-radius: 12px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
             overflow-x: auto;
-            padding: 24px;
-            max-height: 70vh; /* Agar bisa scroll ke bawah jika data banyak */
+            max-height: 75vh;
         }
 
         .tab-content.active {
@@ -179,33 +178,62 @@
             text-align: left;
         }
 
+        th, td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
         th {
             font-size: 12px;
-            font-weight: 500;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.02em;
             color: var(--ink-muted);
-            padding: 16px;
-            border-bottom: 1px solid var(--border);
             background-color: var(--surface-1);
             white-space: nowrap;
             position: sticky;
             top: 0;
             z-index: 10;
+            box-shadow: 0 1px 0 var(--border); 
+            border-bottom: none;
         }
 
         td {
-            padding: 16px;
-            border-bottom: 1px solid var(--border);
-            font-size: 15px;
+            font-size: 14px;
+            color: var(--ink);
+        }
+
+        /* Desain Baris Total (Sticky Bawah) */
+        tfoot td {
+            position: sticky;
+            bottom: 0;
+            background-color: var(--surface-2);
+            font-weight: 600;
+            color: var(--ink);
+            border-top: 2px solid var(--border);
+            box-shadow: 0 -1px 0 var(--border);
+            z-index: 9;
+        }
+
+        .col-center {
+            text-align: center;
+        }
+
+        .col-nama {
+            min-width: 250px;
+            white-space: normal;
+            line-height: 1.5;
         }
 
         .status-badge {
-            display: inline-block;
-            padding: 4px 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 10px;
             border-radius: 4px;
             font-size: 12px;
-            font-weight: 500;
+            font-weight: 600;
             white-space: nowrap;
         }
 
@@ -244,7 +272,17 @@
         <label for="dateFilter">Tanggal:</label>
         <select id="dateFilter" onchange="applyFilter()"></select>
 
-        <label for="searchInput" style="margin-left: 8px;">Cari:</label>
+        <label for="statusFilter">Status:</label>
+        <select id="statusFilter" onchange="applyFilter()">
+            <option value="ALL">Semua Status</option>
+            <option value="Sesuai">Sesuai (Selisih 0)</option>
+            <option value="Kurang">Kurang (Selisih Minus)</option>
+            <option value="Lebih">Lebih (Selisih Plus)</option>
+            <option value="Loss Scan">Loss Scan</option>
+            <option value="Unknown">Unknown</option>
+        </select>
+
+        <label for="searchInput">Cari:</label>
         <input type="text" id="searchInput" placeholder="Ketik Kode / Nama SKU..." onkeyup="applyFilter()">
         
         <button class="btn-export" onclick="exportToExcel()">
@@ -253,7 +291,7 @@
                 <polyline points="7 10 12 15 17 10"></polyline>
                 <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
-            Export ke Excel
+            Export Excel
         </button>
     </div>
 
@@ -270,16 +308,19 @@
         <table id="table-compare">
             <thead>
                 <tr>
-                    <th>Tanggal</th>
+                    <th class="col-center">Tanggal</th>
                     <th>Kode SKU</th>
-                    <th>Nama SKU</th>
-                    <th>QTY Bongkar</th>
-                    <th>QTY Ambil (Putway)</th>
-                    <th>Selisih</th>
-                    <th>Status</th>
+                    <th class="col-nama">Nama SKU</th>
+                    <th class="col-center">QTY Bongkar</th>
+                    <th class="col-center">QTY Ambil</th>
+                    <th class="col-center">Selisih</th>
+                    <th class="col-center">Status</th>
                 </tr>
             </thead>
             <tbody></tbody>
+            <tfoot>
+                <!-- Baris Total akan dimuat secara otomatis oleh JavaScript -->
+            </tfoot>
         </table>
     </div>
 
@@ -287,11 +328,11 @@
         <table id="table-bongkar">
             <thead>
                 <tr>
-                    <th>Tanggal</th>
+                    <th class="col-center">Tanggal</th>
                     <th>Kode SKU</th>
-                    <th>Nama SKU</th>
+                    <th class="col-nama">Nama SKU</th>
                     <th>No. Karung</th>
-                    <th>QTY Bongkar</th>
+                    <th class="col-center">QTY Bongkar</th>
                     <th>Lokasi</th>
                     <th>PIC / Tim</th>
                 </tr>
@@ -304,12 +345,12 @@
         <table id="table-putway">
             <thead>
                 <tr>
-                    <th>Tanggal</th>
+                    <th class="col-center">Tanggal</th>
                     <th>Kode SKU</th>
-                    <th>Nama SKU</th>
+                    <th class="col-nama">Nama SKU</th>
                     <th>Konveksi</th>
-                    <th>Total Permintaan</th>
-                    <th>QTY Ambil</th>
+                    <th class="col-center">Permintaan</th>
+                    <th class="col-center">QTY Ambil</th>
                     <th>PIC</th>
                 </tr>
             </thead>
@@ -321,10 +362,10 @@
         <table id="table-stok">
             <thead>
                 <tr>
-                    <th>Tanggal</th>
+                    <th class="col-center">Tanggal</th>
                     <th>Kode SKU</th>
-                    <th>Nama SKU</th>
-                    <th>Sisa Stok</th>
+                    <th class="col-nama">Nama SKU</th>
+                    <th class="col-center">Sisa Stok</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -375,10 +416,6 @@
             const csvBongkar = await resBongkar.text();
             const csvPutway = await resPutway.text();
 
-            if (csvBongkar.includes("<!DOCTYPE html>")) {
-                throw new Error("Gagal mengambil data. Google Sheets meminta halaman login.");
-            }
-
             Papa.parse(csvBongkar, {
                 header: true, skipEmptyLines: true,
                 complete: function(results) { dataBongkar = results.data; }
@@ -425,15 +462,22 @@
 
     function applyFilter() {
         const filterDate = document.getElementById('dateFilter').value;
+        const filterStatus = document.getElementById('statusFilter').value;
         const searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
         
         const tbodyBongkar = document.querySelector('#table-bongkar tbody');
         const tbodyPutway = document.querySelector('#table-putway tbody');
         const tbodyCompare = document.querySelector('#table-compare tbody');
+        const tfootCompare = document.querySelector('#table-compare tfoot');
         const tbodyStok = document.querySelector('#table-stok tbody');
 
         let htmlBongkar = "", htmlStok = "", htmlPutway = "", htmlCompare = "";
         const compareData = {};
+
+        // Variabel untuk menghitung Total
+        let totalBongkar = 0;
+        let totalAmbil = 0;
+        let totalSelisih = 0;
 
         // 1. Loop Data Bongkar
         dataBongkar.forEach(row => {
@@ -442,33 +486,29 @@
             const sku = row['KODE SKU'] || '';
             const nama = row['NAMA SKU'] || '';
             
-            // Filter Tanggal
             if (filterDate !== "ALL" && dateOnly !== filterDate) return; 
-            
-            // Filter Search (Kata Kunci)
             if (searchQuery && !sku.toLowerCase().includes(searchQuery) && !nama.toLowerCase().includes(searchQuery)) return;
             
             htmlBongkar += `
                 <tr>
-                    <td>${row['TANGGAL']}</td>
+                    <td class="col-center">${row['TANGGAL']}</td>
                     <td>${sku}</td>
-                    <td>${nama}</td>
+                    <td class="col-nama">${nama}</td>
                     <td>${row['NOMOR KARUNG'] || '-'}</td>
-                    <td class="mono">${row['QTY BONGKAR'] || '0'}</td>
+                    <td class="col-center mono">${row['QTY BONGKAR'] || '0'}</td>
                     <td>${row['LOKASI KARUNG'] || '-'}</td>
                     <td>${row['TIM'] || '-'}</td>
                 </tr>
             `;
 
-            // Aturan Baru: Tampilkan stok yang lebih dari 0 saja
             const sisaStok = parseInt(row['SISA STOCK'] || 0);
             if (sisaStok > 0) {
                 htmlStok += `
                     <tr>
-                        <td>${row['TANGGAL']}</td>
+                        <td class="col-center">${row['TANGGAL']}</td>
                         <td>${sku}</td>
-                        <td>${nama}</td>
-                        <td class="mono">${sisaStok}</td>
+                        <td class="col-nama">${nama}</td>
+                        <td class="col-center mono">${sisaStok}</td>
                     </tr>
                 `;
             }
@@ -488,20 +528,17 @@
             const sku = putway['KODE SKU'] || '';
             const nama = putway['NAMA SKU'] || '';
 
-            // Filter Tanggal
             if (filterDate !== "ALL" && putwayDate !== filterDate) return;
-
-            // Filter Search (Kata Kunci)
             if (searchQuery && !sku.toLowerCase().includes(searchQuery) && !nama.toLowerCase().includes(searchQuery)) return;
 
             htmlPutway += `
                 <tr>
-                    <td>${putway['TGL']}</td>
+                    <td class="col-center">${putway['TGL']}</td>
                     <td>${sku}</td>
-                    <td>${nama}</td>
+                    <td class="col-nama">${nama}</td>
                     <td>${putway['KONVEKSI'] || '-'}</td>
-                    <td class="mono">${putway['TOTAL PERMINTAAN'] || '0'}</td>
-                    <td class="mono">${putway['QTY AMBIL'] || '0'}</td>
+                    <td class="col-center mono">${putway['TOTAL PERMINTAAN'] || '0'}</td>
+                    <td class="col-center mono">${putway['QTY AMBIL'] || '0'}</td>
                     <td>${putway['PIC'] || '-'}</td>
                 </tr>
             `;
@@ -515,32 +552,46 @@
             }
         });
 
-        // 3. Render Hasil Compare Gabungan dengan Status Terbaru
+        // 3. Render Hasil Compare dan Hitung Total
         Object.values(compareData).forEach(item => {
             const selisih = item.qtyBongkar - item.qtyAmbil;
+            let statusText = "";
             let statusHtml = "";
 
             if (item.qtyBongkar === 0 && item.qtyAmbil > 0) {
+                statusText = "Loss Scan";
                 statusHtml = `<span class="status-badge status-urgent">Loss Scan</span>`;
             } else if (item.qtyBongkar > 0 && item.qtyAmbil === 0) {
+                statusText = "Unknown";
                 statusHtml = `<span class="status-badge status-warning">Unknown</span>`;
             } else if (item.qtyBongkar > item.qtyAmbil) {
-                statusHtml = `<span class="status-badge status-normal">Lebih</span>`; // Status "Lebih"
+                statusText = "Lebih";
+                statusHtml = `<span class="status-badge status-normal">Lebih</span>`;
             } else if (item.qtyBongkar < item.qtyAmbil) {
-                statusHtml = `<span class="status-badge status-urgent">Kurang</span>`; // Status "Kurang"
+                statusText = "Kurang";
+                statusHtml = `<span class="status-badge status-urgent">Kurang</span>`;
             } else {
+                statusText = "Sesuai";
                 statusHtml = `<span class="status-badge status-normal">Sesuai</span>`;
             }
 
+            // Jika filter status tidak cocok, lewati baris ini dari tabel dan total penjumlahan
+            if (filterStatus !== "ALL" && statusText !== filterStatus) return; 
+
+            // Tambahkan ke kalkulasi Total
+            totalBongkar += item.qtyBongkar;
+            totalAmbil += item.qtyAmbil;
+            totalSelisih += selisih;
+
             htmlCompare += `
                 <tr>
-                    <td>${item.tgl}</td>
+                    <td class="col-center">${item.tgl}</td>
                     <td>${item.sku}</td>
-                    <td>${item.nama}</td>
-                    <td class="mono">${item.qtyBongkar}</td>
-                    <td class="mono">${item.qtyAmbil}</td>
-                    <td class="mono">${selisih > 0 ? '+'+selisih : selisih}</td>
-                    <td>${statusHtml}</td>
+                    <td class="col-nama">${item.nama}</td>
+                    <td class="col-center mono">${item.qtyBongkar}</td>
+                    <td class="col-center mono">${item.qtyAmbil}</td>
+                    <td class="col-center mono">${selisih > 0 ? '+'+selisih : selisih}</td>
+                    <td class="col-center">${statusHtml}</td>
                 </tr>
             `;
         });
@@ -549,6 +600,17 @@
         tbodyStok.innerHTML = htmlStok;
         tbodyPutway.innerHTML = htmlPutway;
         tbodyCompare.innerHTML = htmlCompare;
+
+        // Render Baris Total
+        tfootCompare.innerHTML = `
+            <tr>
+                <td colspan="3" style="text-align: right; padding-right: 24px;">TOTAL KESELURUHAN:</td>
+                <td class="col-center mono" style="color: var(--primary);">${totalBongkar}</td>
+                <td class="col-center mono" style="color: var(--primary);">${totalAmbil}</td>
+                <td class="col-center mono" style="color: var(--primary);">${totalSelisih > 0 ? '+'+totalSelisih : totalSelisih}</td>
+                <td></td>
+            </tr>
+        `;
     }
 
     function exportToExcel() {
