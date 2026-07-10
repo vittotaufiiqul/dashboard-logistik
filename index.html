@@ -4,11 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Sinkronisasi Logistik</title>
+    
+    <!-- Parser untuk baca data Google Sheets -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- Library SheetJS untuk Export ke Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
     <style>
         /* Carbon Health Design System */
         :root {
             --primary: #0A9E8F;
+            --primary-hover: #088A7D;
             --primary-light: #E6F6F5;
             --on-primary: #FFFFFF;
             --ink: #111827;
@@ -58,7 +64,7 @@
             margin: 0 0 24px 0;
         }
 
-        /* Desain Filter Tanggal */
+        /* Desain Filter Tanggal & Tombol Export */
         .filter-section {
             background-color: var(--canvas);
             padding: 16px 24px;
@@ -94,6 +100,27 @@
         .filter-section select:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 2px var(--primary-light);
+        }
+
+        /* Desain Tombol Export (Carbon Health Style) */
+        .btn-export {
+            background-color: var(--primary);
+            color: var(--on-primary);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 180ms ease;
+            margin-left: auto; /* Mendorong tombol otomatis ke kanan */
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-export:hover {
+            background-color: var(--primary-hover);
         }
 
         .tabs {
@@ -196,12 +223,23 @@
         <p>Menampilkan dan membandingkan data live dari spreadsheet Admin Bongkar dan Putway.</p>
     </header>
 
-    <!-- Fitur Filter Tanggal Baru -->
+    <!-- Filter Tanggal & Tombol Export -->
     <div class="filter-section" id="filter-container" style="display: none;">
         <label for="dateFilter">Filter Tanggal:</label>
         <select id="dateFilter" onchange="applyFilter()">
-            <!-- Opsi akan diisi otomatis oleh JavaScript -->
+            <!-- Opsi otomatis diisi JavaScript -->
         </select>
+        
+        <!-- Tombol Export Baru -->
+        <button class="btn-export" onclick="exportToExcel()">
+            <!-- Ikon Download SVG -->
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Export ke Excel
+        </button>
     </div>
 
     <div class="tabs">
@@ -213,7 +251,6 @@
 
     <div id="loading">Memuat data dari Google Sheets...</div>
 
-    <!-- TAB 1: COMPARE -->
     <div id="tab-compare" class="tab-content active">
         <table id="table-compare">
             <thead>
@@ -231,7 +268,6 @@
         </table>
     </div>
 
-    <!-- TAB 2: ADMIN BONGKAR -->
     <div id="tab-bongkar" class="tab-content">
         <table id="table-bongkar">
             <thead>
@@ -249,7 +285,6 @@
         </table>
     </div>
 
-    <!-- TAB 3: PERMINTAAN PUTWAY -->
     <div id="tab-putway" class="tab-content">
         <table id="table-putway">
             <thead>
@@ -267,7 +302,6 @@
         </table>
     </div>
 
-    <!-- TAB 4: SISA STOK -->
     <div id="tab-stok" class="tab-content">
         <table id="table-stok">
             <thead>
@@ -290,7 +324,7 @@
 
     let dataBongkar = [];
     let dataPutway = [];
-    let bongkarIndex = {}; // Kamus data global untuk pencocokan
+    let bongkarIndex = {}; 
 
     function openTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -299,13 +333,11 @@
         event.currentTarget.classList.add('active');
     }
 
-    // Fungsi mengambil tanggal saja (tanpa jam/menit)
     function getDateOnly(dateString) {
         if (!dateString) return "";
-        return dateString.split(' ')[0].trim(); // Mengubah "10/07/2026 10:05:57" jadi "10/07/2026"
+        return dateString.split(' ')[0].trim(); 
     }
 
-    // Fungsi konversi format DD/MM/YYYY ke format angka bantu sorting
     function parseDateString(dateStr) {
         if(!dateStr) return 0;
         const parts = dateStr.split('/');
@@ -323,14 +355,14 @@
             ]);
 
             if (!resBongkar.ok || !resPutway.ok) {
-                throw new Error(`Akses diblokir (Status: ${resBongkar.status}). Pastikan file sudah diatur "Publikasikan ke Web".`);
+                throw new Error(`Akses diblokir. Pastikan file sudah diatur "Publikasikan ke Web".`);
             }
 
             const csvBongkar = await resBongkar.text();
             const csvPutway = await resPutway.text();
 
             if (csvBongkar.includes("<!DOCTYPE html>")) {
-                throw new Error("Gagal mengambil data. Google Sheets meminta halaman login. Pastikan tahap 'Publikasikan ke Web' sudah dilakukan.");
+                throw new Error("Gagal mengambil data. Google Sheets meminta halaman login.");
             }
 
             Papa.parse(csvBongkar, {
@@ -359,13 +391,10 @@
         const dateSet = new Set();
         bongkarIndex = {};
 
-        // 1. Buat Kamus Data & Kumpulkan Tanggal Unik
         dataBongkar.forEach(row => {
             if(!row['TANGGAL']) return; 
             const dateOnly = getDateOnly(row['TANGGAL']);
             dateSet.add(dateOnly);
-            
-            // Kunci unik berdasarkan Tanggal + SKU untuk akurasi Compare
             bongkarIndex[dateOnly + "_" + row['KODE SKU']] = row;
         });
 
@@ -374,10 +403,8 @@
             dateSet.add(getDateOnly(row['TGL']));
         });
 
-        // 2. Urutkan tanggal (Terbaru di atas)
         const uniqueDates = Array.from(dateSet).sort((a, b) => parseDateString(b) - parseDateString(a));
 
-        // 3. Masukkan ke dalam Dropdown
         const filterSelect = document.getElementById('dateFilter');
         filterSelect.innerHTML = '<option value="ALL">Semua Tanggal (Memuat Lebih Lama)</option>';
         
@@ -385,12 +412,10 @@
             if(date) filterSelect.innerHTML += `<option value="${date}">${date}</option>`;
         });
 
-        // Pilih tanggal paling baru secara otomatis agar web langsung terbuka dengan ringan
         if(uniqueDates.length > 0) {
             filterSelect.value = uniqueDates[0]; 
         }
 
-        // Mulai render tabel berdasarkan filter tanggal
         applyFilter();
     }
 
@@ -407,12 +432,11 @@
 
         let htmlBongkar = "", htmlStok = "", htmlPutway = "", htmlCompare = "";
 
-        // Render Bongkar & Sisa Stok (terfilter)
         dataBongkar.forEach(row => {
             if(!row['TANGGAL']) return; 
             const dateOnly = getDateOnly(row['TANGGAL']);
             
-            if (filterDate !== "ALL" && dateOnly !== filterDate) return; // Lewati jika tidak cocok
+            if (filterDate !== "ALL" && dateOnly !== filterDate) return; 
             
             htmlBongkar += `
                 <tr>
@@ -436,12 +460,11 @@
             `;
         });
 
-        // Render Putway & Compare (terfilter)
         dataPutway.forEach(putway => {
             if(!putway['TGL']) return;
             const putwayDate = getDateOnly(putway['TGL']);
 
-            if (filterDate !== "ALL" && putwayDate !== filterDate) return; // Lewati jika tidak cocok
+            if (filterDate !== "ALL" && putwayDate !== filterDate) return;
 
             htmlPutway += `
                 <tr>
@@ -455,7 +478,6 @@
                 </tr>
             `;
 
-            // Proses Compare berdasarkan Tanggal & SKU yang spesifik
             const bongkarMatch = bongkarIndex[putwayDate + "_" + putway['KODE SKU']];
             
             const qtyBongkar = bongkarMatch ? parseInt(bongkarMatch['QTY BONGKAR'] || 0) : 0;
@@ -479,11 +501,42 @@
             `;
         });
 
-        // Cetak ke layar
         tbodyBongkar.innerHTML = htmlBongkar;
         tbodyStok.innerHTML = htmlStok;
         tbodyPutway.innerHTML = htmlPutway;
         tbodyCompare.innerHTML = htmlCompare;
+    }
+
+    // Fungsi Baru: Export ke Excel
+    function exportToExcel() {
+        const selectedDate = document.getElementById('dateFilter').value;
+        // Format penamaan file agar rapi (misal: Laporan_Logistik_10-07-2026.xlsx)
+        const dateStrForFile = selectedDate === 'ALL' ? 'Semua_Tanggal' : selectedDate.replace(/\//g, '-');
+        const fileName = `Laporan_Logistik_${dateStrForFile}.xlsx`;
+
+        // Ambil elemen HTML dari ke-4 tabel yang sudah ter-filter
+        const tableCompare = document.getElementById('table-compare');
+        const tableBongkar = document.getElementById('table-bongkar');
+        const tablePutway = document.getElementById('table-putway');
+        const tableStok = document.getElementById('table-stok');
+
+        // Buat buku kerja (Workbook) Excel baru
+        const wb = XLSX.utils.book_new();
+
+        // Konversi tiap tabel HTML menjadi Lembar Kerja (Worksheet) Excel
+        const wsCompare = XLSX.utils.table_to_sheet(tableCompare);
+        const wsBongkar = XLSX.utils.table_to_sheet(tableBongkar);
+        const wsPutway = XLSX.utils.table_to_sheet(tablePutway);
+        const wsStok = XLSX.utils.table_to_sheet(tableStok);
+
+        // Masukkan Worksheet ke dalam Workbook
+        XLSX.utils.book_append_sheet(wb, wsCompare, "Compare QTY");
+        XLSX.utils.book_append_sheet(wb, wsBongkar, "Admin Bongkar");
+        XLSX.utils.book_append_sheet(wb, wsPutway, "Permintaan Putway");
+        XLSX.utils.book_append_sheet(wb, wsStok, "Sisa Stok");
+
+        // Proses Unduh
+        XLSX.writeFile(wb, fileName);
     }
 
     document.addEventListener('DOMContentLoaded', fetchData);
