@@ -64,6 +64,7 @@
             margin: 0 0 24px 0;
         }
 
+        /* Desain Filter & Search */
         .filter-section {
             background-color: var(--canvas);
             padding: 16px 24px;
@@ -72,6 +73,7 @@
             margin-bottom: 24px;
             display: flex;
             align-items: center;
+            flex-wrap: wrap; /* Agar responsif jika layar kecil */
             gap: 16px;
             border-left: 4px solid var(--primary);
         }
@@ -82,7 +84,7 @@
             color: var(--ink);
         }
 
-        .filter-section select {
+        .filter-section select, .filter-section input[type="text"] {
             padding: 8px 16px;
             border: 1px solid var(--border);
             border-radius: 6px;
@@ -91,12 +93,20 @@
             color: var(--ink);
             background-color: var(--surface-1);
             outline: none;
-            cursor: pointer;
-            min-width: 200px;
             transition: all 180ms ease;
         }
 
-        .filter-section select:focus {
+        .filter-section select {
+            cursor: pointer;
+            min-width: 180px;
+        }
+        
+        /* Desain Search Bar */
+        .filter-section input[type="text"] {
+            min-width: 250px;
+        }
+
+        .filter-section select:focus, .filter-section input[type="text"]:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 2px var(--primary-light);
         }
@@ -156,6 +166,7 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
             overflow-x: auto;
             padding: 24px;
+            max-height: 70vh; /* Agar bisa scroll ke bawah jika data banyak */
         }
 
         .tab-content.active {
@@ -178,6 +189,9 @@
             border-bottom: 1px solid var(--border);
             background-color: var(--surface-1);
             white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
 
         td {
@@ -227,8 +241,11 @@
     </header>
 
     <div class="filter-section" id="filter-container" style="display: none;">
-        <label for="dateFilter">Filter Tanggal:</label>
+        <label for="dateFilter">Tanggal:</label>
         <select id="dateFilter" onchange="applyFilter()"></select>
+
+        <label for="searchInput" style="margin-left: 8px;">Cari:</label>
+        <input type="text" id="searchInput" placeholder="Ketik Kode / Nama SKU..." onkeyup="applyFilter()">
         
         <button class="btn-export" onclick="exportToExcel()">
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
@@ -244,7 +261,7 @@
         <button class="tab-btn active" onclick="openTab('tab-compare')">Compare QTY</button>
         <button class="tab-btn" onclick="openTab('tab-bongkar')">Admin Bongkar</button>
         <button class="tab-btn" onclick="openTab('tab-putway')">Permintaan Putway</button>
-        <button class="tab-btn" onclick="openTab('tab-stok')">Sisa Stok</button>
+        <button class="tab-btn" onclick="openTab('tab-stok')">Sisa Stok (> 0)</button>
     </div>
 
     <div id="loading">Memuat data dari Google Sheets...</div>
@@ -408,29 +425,34 @@
 
     function applyFilter() {
         const filterDate = document.getElementById('dateFilter').value;
+        const searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
+        
         const tbodyBongkar = document.querySelector('#table-bongkar tbody');
         const tbodyPutway = document.querySelector('#table-putway tbody');
         const tbodyCompare = document.querySelector('#table-compare tbody');
         const tbodyStok = document.querySelector('#table-stok tbody');
 
         let htmlBongkar = "", htmlStok = "", htmlPutway = "", htmlCompare = "";
-        
-        // Objek untuk menampung gabungan data (Full Outer Join) untuk tabel Compare
         const compareData = {};
 
         // 1. Loop Data Bongkar
         dataBongkar.forEach(row => {
             if(!row['TANGGAL']) return; 
             const dateOnly = getDateOnly(row['TANGGAL']);
-            const sku = row['KODE SKU'];
+            const sku = row['KODE SKU'] || '';
+            const nama = row['NAMA SKU'] || '';
             
+            // Filter Tanggal
             if (filterDate !== "ALL" && dateOnly !== filterDate) return; 
+            
+            // Filter Search (Kata Kunci)
+            if (searchQuery && !sku.toLowerCase().includes(searchQuery) && !nama.toLowerCase().includes(searchQuery)) return;
             
             htmlBongkar += `
                 <tr>
                     <td>${row['TANGGAL']}</td>
                     <td>${sku}</td>
-                    <td>${row['NAMA SKU']}</td>
+                    <td>${nama}</td>
                     <td>${row['NOMOR KARUNG'] || '-'}</td>
                     <td class="mono">${row['QTY BONGKAR'] || '0'}</td>
                     <td>${row['LOKASI KARUNG'] || '-'}</td>
@@ -438,19 +460,22 @@
                 </tr>
             `;
 
-            htmlStok += `
-                <tr>
-                    <td>${row['TANGGAL']}</td>
-                    <td>${sku}</td>
-                    <td>${row['NAMA SKU']}</td>
-                    <td class="mono">${row['SISA STOCK'] || '0'}</td>
-                </tr>
-            `;
+            // Aturan Baru: Tampilkan stok yang lebih dari 0 saja
+            const sisaStok = parseInt(row['SISA STOCK'] || 0);
+            if (sisaStok > 0) {
+                htmlStok += `
+                    <tr>
+                        <td>${row['TANGGAL']}</td>
+                        <td>${sku}</td>
+                        <td>${nama}</td>
+                        <td class="mono">${sisaStok}</td>
+                    </tr>
+                `;
+            }
 
-            // Tambahkan SKU ke data Compare
             const qtyBongkar = parseInt(row['QTY BONGKAR'] || 0);
             if(!compareData[sku]) {
-                compareData[sku] = { tgl: dateOnly, sku: sku, nama: row['NAMA SKU'], qtyBongkar: qtyBongkar, qtyAmbil: 0 };
+                compareData[sku] = { tgl: dateOnly, sku: sku, nama: nama, qtyBongkar: qtyBongkar, qtyAmbil: 0 };
             } else {
                 compareData[sku].qtyBongkar += qtyBongkar;
             }
@@ -460,15 +485,20 @@
         dataPutway.forEach(putway => {
             if(!putway['TGL']) return;
             const putwayDate = getDateOnly(putway['TGL']);
-            const sku = putway['KODE SKU'];
+            const sku = putway['KODE SKU'] || '';
+            const nama = putway['NAMA SKU'] || '';
 
+            // Filter Tanggal
             if (filterDate !== "ALL" && putwayDate !== filterDate) return;
+
+            // Filter Search (Kata Kunci)
+            if (searchQuery && !sku.toLowerCase().includes(searchQuery) && !nama.toLowerCase().includes(searchQuery)) return;
 
             htmlPutway += `
                 <tr>
                     <td>${putway['TGL']}</td>
                     <td>${sku}</td>
-                    <td>${putway['NAMA SKU']}</td>
+                    <td>${nama}</td>
                     <td>${putway['KONVEKSI'] || '-'}</td>
                     <td class="mono">${putway['TOTAL PERMINTAAN'] || '0'}</td>
                     <td class="mono">${putway['QTY AMBIL'] || '0'}</td>
@@ -476,34 +506,30 @@
                 </tr>
             `;
 
-            // Tambahkan SKU ke data Compare (Atau update jika SKU sudah dicatat dari Bongkar)
             const qtyAmbil = parseInt(putway['QTY AMBIL'] || 0);
             if(!compareData[sku]) {
-                compareData[sku] = { tgl: putwayDate, sku: sku, nama: putway['NAMA SKU'], qtyBongkar: 0, qtyAmbil: qtyAmbil };
+                compareData[sku] = { tgl: putwayDate, sku: sku, nama: nama, qtyBongkar: 0, qtyAmbil: qtyAmbil };
             } else {
                 compareData[sku].qtyAmbil += qtyAmbil;
-                // Pastikan nama SKU tetap terisi jika di Bongkar kosong
-                compareData[sku].nama = compareData[sku].nama || putway['NAMA SKU'];
+                compareData[sku].nama = compareData[sku].nama || nama;
             }
         });
 
-        // 3. Render Hasil Compare Gabungan (Full Outer Join)
+        // 3. Render Hasil Compare Gabungan dengan Status Terbaru
         Object.values(compareData).forEach(item => {
             const selisih = item.qtyBongkar - item.qtyAmbil;
             let statusHtml = "";
 
             if (item.qtyBongkar === 0 && item.qtyAmbil > 0) {
-                // Ada di Putway tapi tidak ada di Bongkar
                 statusHtml = `<span class="status-badge status-urgent">Loss Scan</span>`;
             } else if (item.qtyBongkar > 0 && item.qtyAmbil === 0) {
-                // Ada di Bongkar tapi tidak ada di Putway
                 statusHtml = `<span class="status-badge status-warning">Unknown</span>`;
-            } else if (selisih < 0) {
-                // Ada di keduanya, tapi jumlah Bongkar kurang dari Ambil
-                statusHtml = `<span class="status-badge status-urgent">Kekurangan</span>`;
+            } else if (item.qtyBongkar > item.qtyAmbil) {
+                statusHtml = `<span class="status-badge status-normal">Lebih</span>`; // Status "Lebih"
+            } else if (item.qtyBongkar < item.qtyAmbil) {
+                statusHtml = `<span class="status-badge status-urgent">Kurang</span>`; // Status "Kurang"
             } else {
-                // Pas atau lebih
-                statusHtml = `<span class="status-badge status-normal">Cukup/Lebih</span>`;
+                statusHtml = `<span class="status-badge status-normal">Sesuai</span>`;
             }
 
             htmlCompare += `
