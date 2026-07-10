@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Sinkronisasi Logistik</title>
+    <!-- Menggunakan PapaParse untuk membaca format data dari Google Sheets -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        /* Carbon Health Design System */
+        :root {
+            --primary: #0A9E8F;
+            --primary-light: #E6F6F5;
+            --on-primary: #FFFFFF;
+            --ink: #111827;
+            --ink-muted: #6B7280;
+            --canvas: #FFFFFF;
+            --surface-1: #F9FAFB;
+            --border: #E5E7EB;
+            --urgent: #DC2626;
+            --urgent-bg: #FEF2F2;
+            --normal: #059669;
+            --normal-bg: #ECFDF5;
+        }
+
+        body {
+            font-family: "Inter", -apple-system, sans-serif;
+            background-color: var(--surface-1);
+            color: var(--ink);
+            margin: 0;
+            padding: 0;
+            line-height: 1.65;
+        }
+
+        /* Typography khusus untuk angka (Monospace) */
+        .mono {
+            font-family: "JetBrains Mono", Menlo, monospace;
+            font-size: 13px;
+        }
+
+        /* Layout & Spacing */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px 16px;
+        }
+
+        header {
+            margin-bottom: 32px;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            margin: 0 0 8px 0;
+        }
+
+        p {
+            color: var(--ink-muted);
+            margin: 0 0 24px 0;
+        }
+
+        /* Navigasi Tab */
+        .tabs {
+            display: flex;
+            gap: 16px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 12px 16px;
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--ink-muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .tab-btn:hover {
+            color: var(--ink);
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+        }
+
+        /* Tampilan Konten & Tabel */
+        .tab-content {
+            display: none;
+            background-color: var(--canvas);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+            overflow-x: auto;
+            padding: 24px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+            color: var(--ink-muted);
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            background-color: var(--surface-1);
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 15px;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-urgent {
+            color: var(--urgent);
+            background-color: var(--urgent-bg);
+        }
+
+        .status-normal {
+            color: var(--normal);
+            background-color: var(--normal-bg);
+        }
+
+        /* Loading */
+        #loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--primary);
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Warehouse Sync & Compare</h1>
+        <p>Menampilkan dan membandingkan data live dari spreadsheet Admin Bongkar dan Putway.</p>
+    </header>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="openTab('tab-compare')">Compare QTY</button>
+        <button class="tab-btn" onclick="openTab('tab-bongkar')">Admin Bongkar</button>
+        <button class="tab-btn" onclick="openTab('tab-putway')">Permintaan Putway</button>
+        <button class="tab-btn" onclick="openTab('tab-stok')">Sisa Stok (Per Tanggal)</button>
+    </div>
+
+    <div id="loading">Memuat data dari Google Sheets...</div>
+
+    <!-- TAB 1: COMPARE -->
+    <div id="tab-compare" class="tab-content active">
+        <table id="table-compare">
+            <thead>
+                <tr>
+                    <th>Tanggal</th>
+                    <th>Kode SKU</th>
+                    <th>Nama SKU</th>
+                    <th>QTY Bongkar</th>
+                    <th>QTY Ambil (Putway)</th>
+                    <th>Selisih</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- TAB 2: ADMIN BONGKAR -->
+    <div id="tab-bongkar" class="tab-content">
+        <table id="table-bongkar">
+            <thead>
+                <tr>
+                    <th>Tanggal</th>
+                    <th>Kode SKU</th>
+                    <th>Nama SKU</th>
+                    <th>No. Karung</th>
+                    <th>QTY Bongkar</th>
+                    <th>Lokasi</th>
+                    <th>PIC / Tim</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- TAB 3: PERMINTAAN PUTWAY -->
+    <div id="tab-putway" class="tab-content">
+        <table id="table-putway">
+            <thead>
+                <tr>
+                    <th>Tanggal</th>
+                    <th>Kode SKU</th>
+                    <th>Nama SKU</th>
+                    <th>Konveksi</th>
+                    <th>Total Permintaan</th>
+                    <th>QTY Ambil</th>
+                    <th>PIC</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- TAB 4: SISA STOK -->
+    <div id="tab-stok" class="tab-content">
+        <table id="table-stok">
+            <thead>
+                <tr>
+                    <th>Tanggal</th>
+                    <th>Kode SKU</th>
+                    <th>Nama SKU</th>
+                    <th>Sisa Stok</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const SHEET_ID = '1tVpM43QkTT_nMayhjJJpfboIS25-V9dgI6Widk0GAcg';
+    
+    // URL CSV Export Google Sheets Public
+    const urlBongkar = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=TIM_1_BONGKAR`;
+    const urlPutway = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=REKAP_DATA_PUTWAY`;
+
+    let dataBongkar = [];
+    let dataPutway = [];
+
+    // Fungsi ganti tab
+    function openTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
+
+    // Fungsi Fetch dan Parse CSV
+    async function fetchData() {
+        try {
+            const [resBongkar, resPutway] = await Promise.all([
+                fetch(urlBongkar),
+                fetch(urlPutway)
+            ]);
+
+            const csvBongkar = await resBongkar.text();
+            const csvPutway = await resPutway.text();
+
+            Papa.parse(csvBongkar, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    dataBongkar = results.data;
+                }
+            });
+
+            Papa.parse(csvPutway, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    dataPutway = results.data;
+                }
+            });
+
+            document.getElementById('loading').style.display = 'none';
+            renderTables();
+        } catch (error) {
+            document.getElementById('loading').innerText = "Gagal memuat data. Pastikan Google Sheet sudah 'Publik' / 'Anyone with the link can view'.";
+            console.error(error);
+        }
+    }
+
+    // Render semua tabel
+    function renderTables() {
+        const tbodyBongkar = document.querySelector('#table-bongkar tbody');
+        const tbodyPutway = document.querySelector('#table-putway tbody');
+        const tbodyCompare = document.querySelector('#table-compare tbody');
+        const tbodyStok = document.querySelector('#table-stok tbody');
+
+        // 1. Render Admin Bongkar
+        dataBongkar.forEach(row => {
+            if(!row['TANGGAL']) return; // Skip baris kosong
+            tbodyBongkar.innerHTML += `
+                <tr>
+                    <td>${row['TANGGAL']}</td>
+                    <td>${row['KODE SKU']}</td>
+                    <td>${row['NAMA SKU']}</td>
+                    <td>${row['NOMOR KARUNG'] || '-'}</td>
+                    <td class="mono">${row['QTY BONGKAR'] || '0'}</td>
+                    <td>${row['LOKASI KARUNG'] || '-'}</td>
+                    <td>${row['TIM'] || '-'}</td>
+                </tr>
+            `;
+
+            // Sekaligus render tab Sisa Stok per tanggal
+            tbodyStok.innerHTML += `
+                <tr>
+                    <td>${row['TANGGAL']}</td>
+                    <td>${row['KODE SKU']}</td>
+                    <td>${row['NAMA SKU']}</td>
+                    <td class="mono">${row['SISA STOCK'] || '0'}</td>
+                </tr>
+            `;
+        });
+
+        // 2. Render Permintaan Putway
+        dataPutway.forEach(row => {
+            if(!row['TGL']) return;
+            tbodyPutway.innerHTML += `
+                <tr>
+                    <td>${row['TGL']}</td>
+                    <td>${row['KODE SKU']}</td>
+                    <td>${row['NAMA SKU']}</td>
+                    <td>${row['KONVEKSI'] || '-'}</td>
+                    <td class="mono">${row['TOTAL PERMINTAAN'] || '0'}</td>
+                    <td class="mono">${row['QTY AMBIL'] || '0'}</td>
+                    <td>${row['PIC'] || '-'}</td>
+                </tr>
+            `;
+        });
+
+        // 3. Render Compare (Mencocokkan QTY Bongkar dan QTY Ambil)
+        dataPutway.forEach(putway => {
+            if(!putway['TGL']) return;
+
+            // Cari bongkar yang SKU-nya sama. 
+            // Catatan: Jika ingin per tanggal juga, tambahkan: && bongkar['TANGGAL'] === putway['TGL']
+            const bongkarMatch = dataBongkar.find(bongkar => bongkar['KODE SKU'] === putway['KODE SKU']);
+            
+            const qtyBongkar = bongkarMatch ? parseInt(bongkarMatch['QTY BONGKAR'] || 0) : 0;
+            const qtyAmbil = parseInt(putway['QTY AMBIL'] || 0);
+            const selisih = qtyBongkar - qtyAmbil;
+
+            let statusHtml = '';
+            // Logika Status: Jika QTY Bongkar < QTY Ambil, maka Urgent (Minus).
+            if (selisih < 0) {
+                statusHtml = `<span class="status-badge status-urgent">Kekurangan</span>`;
+            } else {
+                statusHtml = `<span class="status-badge status-normal">Cukup/Lebih</span>`;
+            }
+
+            tbodyCompare.innerHTML += `
+                <tr>
+                    <td>${putway['TGL']}</td>
+                    <td>${putway['KODE SKU']}</td>
+                    <td>${putway['NAMA SKU']}</td>
+                    <td class="mono">${qtyBongkar}</td>
+                    <td class="mono">${qtyAmbil}</td>
+                    <td class="mono">${selisih > 0 ? '+'+selisih : selisih}</td>
+                    <td>${statusHtml}</td>
+                </tr>
+            `;
+        });
+    }
+
+    // Jalankan fetch saat halaman dimuat
+    window.onload = fetchData;
+</script>
+
+</body>
+</html>
