@@ -269,6 +269,7 @@
         <select id="statusFilter" onchange="applyFilter()">
             <option value="ALL">Semua Status</option>
             <option value="Sesuai">Sesuai (Selisih 0)</option>
+            <option value="Tidak Sesuai">Tidak Sesuai (Semua Selisih)</option>
             <option value="Kurang">Kurang (Selisih Minus)</option>
             <option value="Kelebihan">Kelebihan (Selisih Plus)</option>
             <option value="Loss Scan">Loss Scan</option>
@@ -302,7 +303,7 @@
         <button class="tab-btn active" onclick="openTab('tab-compare')">Compare QTY</button>
         <button class="tab-btn" onclick="openTab('tab-bongkar')">Admin Bongkar</button>
         <button class="tab-btn" onclick="openTab('tab-putway')">Permintaan Putway</button>
-        <button class="tab-btn" onclick="openTab('tab-stok')">Sisa Stok</button>
+        <button class="tab-btn" onclick="openTab('tab-stok')">Sisa Stok (> 0)</button>
     </div>
 
     <div id="loading">Memuat data dari Google Sheets...</div>
@@ -609,7 +610,12 @@
                 statusText = "Sesuai"; statusHtml = `<span class="status-badge status-normal">Sesuai</span>`;
             }
 
-            if (filterStatus !== "ALL" && statusText !== filterStatus) return; 
+            // Logika Filter Status 
+            if (filterStatus === "Tidak Sesuai") {
+                if (statusText === "Sesuai") return; // Sembunyikan yang Sesuai
+            } else if (filterStatus !== "ALL" && statusText !== filterStatus) {
+                return; // Sembunyikan yang tidak cocok dengan status spesifik
+            }
 
             sumCompareBongkar += item.qtyBongkar;
             sumCompareAmbil += item.qtyAmbil;
