@@ -270,7 +270,7 @@
             <option value="ALL">Semua Status</option>
             <option value="Sesuai">Sesuai (Selisih 0)</option>
             <option value="Kurang">Kurang (Selisih Minus)</option>
-            <option value="Lebih">Lebih (Selisih Plus)</option>
+            <option value="Kelebihan">Kelebihan (Selisih Plus)</option>
             <option value="Loss Scan">Loss Scan</option>
             <option value="Unknown">Unknown</option>
         </select>
@@ -302,7 +302,7 @@
         <button class="tab-btn active" onclick="openTab('tab-compare')">Compare QTY</button>
         <button class="tab-btn" onclick="openTab('tab-bongkar')">Admin Bongkar</button>
         <button class="tab-btn" onclick="openTab('tab-putway')">Permintaan Putway</button>
-        <button class="tab-btn" onclick="openTab('tab-stok')">Sisa Stok (> 0)</button>
+        <button class="tab-btn" onclick="openTab('tab-stok')">Sisa Stok</button>
     </div>
 
     <div id="loading">Memuat data dari Google Sheets...</div>
@@ -406,7 +406,6 @@
         return 0; 
     }
 
-    // Fungsi Fetch dengan parameter untuk Background Refresh
     async function fetchData(isBackgroundSync = false) {
         const btnSync = document.getElementById('btnSync');
         if (isBackgroundSync) {
@@ -415,7 +414,6 @@
         }
 
         try {
-            // Menggunakan Date.now() untuk menangkal cache Google
             const noCacheKey = `&_v=${Date.now()}`;
             const [resBongkar, resPutway] = await Promise.all([
                 fetch(baseUrlBongkar + noCacheKey),
@@ -444,7 +442,6 @@
                 document.getElementById('filter-container').style.display = 'flex';
             }
             
-            // Catat waktu sinkronisasi terakhir
             const now = new Date();
             const timeString = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             document.getElementById('lastSyncTime').innerText = `Terakhir diperbarui: ${timeString}`;
@@ -479,7 +476,6 @@
         const uniqueDates = Array.from(dateSet).sort((a, b) => parseDateString(b) - parseDateString(a));
         const filterSelect = document.getElementById('dateFilter');
         
-        // Simpan tanggal yang sedang dipilih sebelum memperbarui dropdown
         const currentSelection = filterSelect.value;
         
         filterSelect.innerHTML = '<option value="ALL">Semua Tanggal (Memuat Lebih Lama)</option>';
@@ -487,7 +483,6 @@
             if(date) filterSelect.innerHTML += `<option value="${date}">${date}</option>`;
         });
 
-        // Kembalikan ke tanggal sebelumnya jika sedang auto-refresh
         if (preserveFilter && currentSelection) {
             filterSelect.value = currentSelection;
         } else if (uniqueDates.length > 0) {
@@ -517,12 +512,9 @@
         let htmlBongkar = "", htmlStok = "", htmlPutway = "", htmlCompare = "";
         const compareData = {};
 
-        // Variabel Total Compare
         let sumCompareBongkar = 0, sumCompareAmbil = 0, sumCompareSelisih = 0;
-        // Variabel Total Tab Lainnya
         let sumTabBongkar = 0, sumTabPutwayPermintaan = 0, sumTabPutwayAmbil = 0, sumTabStok = 0;
 
-        // 1. Loop Data Bongkar
         dataBongkar.forEach(row => {
             if(!row['TANGGAL']) return; 
             const dateOnly = getDateOnly(row['TANGGAL']);
@@ -534,7 +526,6 @@
             
             const qtyBongkar = parseInt(row['QTY BONGKAR'] || 0);
             
-            // Render HTML Bongkar & Kalkulasi Total Tab Bongkar
             htmlBongkar += `
                 <tr>
                     <td class="col-center">${row['TANGGAL']}</td>
@@ -568,7 +559,6 @@
             }
         });
 
-        // 2. Loop Data Putway
         dataPutway.forEach(putway => {
             if(!putway['TGL']) return;
             const putwayDate = getDateOnly(putway['TGL']);
@@ -581,7 +571,6 @@
             const qtyPermintaan = parseInt(putway['TOTAL PERMINTAAN'] || 0);
             const qtyAmbil = parseInt(putway['QTY AMBIL'] || 0);
 
-            // Render HTML Putway & Kalkulasi Total Tab Putway
             htmlPutway += `
                 <tr>
                     <td class="col-center">${putway['TGL']}</td>
@@ -604,7 +593,6 @@
             }
         });
 
-        // 3. Render Hasil Compare
         Object.values(compareData).forEach(item => {
             const selisih = item.qtyBongkar - item.qtyAmbil;
             let statusText = "", statusHtml = "";
@@ -614,7 +602,7 @@
             } else if (item.qtyBongkar > 0 && item.qtyAmbil === 0) {
                 statusText = "Unknown"; statusHtml = `<span class="status-badge status-warning">Unknown</span>`;
             } else if (item.qtyBongkar > item.qtyAmbil) {
-                statusText = "Lebih"; statusHtml = `<span class="status-badge status-normal">Lebih</span>`;
+                statusText = "Kelebihan"; statusHtml = `<span class="status-badge status-normal">Kelebihan</span>`;
             } else if (item.qtyBongkar < item.qtyAmbil) {
                 statusText = "Kurang"; statusHtml = `<span class="status-badge status-urgent">Kurang</span>`;
             } else {
@@ -640,7 +628,6 @@
             `;
         });
 
-        // 4. Inject Body & Tfoot (Total) ke Masing-masing Tabel
         tbodyCompare.innerHTML = htmlCompare;
         tfootCompare.innerHTML = `
             <tr>
@@ -695,11 +682,8 @@
         XLSX.writeFile(wb, fileName);
     }
 
-    // Eksekusi data awal
     document.addEventListener('DOMContentLoaded', () => {
         fetchData();
-        
-        // Auto Refresh Background setiap 1 Menit (60000 ms)
         setInterval(() => {
             fetchData(true);
         }, 60000);
