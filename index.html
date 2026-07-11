@@ -50,19 +50,29 @@
         }
 
         header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
             margin-bottom: 24px;
         }
 
-        h1 {
+        .header-title h1 {
             font-size: 32px;
             font-weight: 600;
             letter-spacing: -0.02em;
             margin: 0 0 8px 0;
         }
 
-        p {
+        .header-title p {
             color: var(--ink-muted);
-            margin: 0 0 24px 0;
+            margin: 0;
+        }
+
+        .sync-info {
+            font-size: 12px;
+            color: var(--ink-muted);
+            text-align: right;
+            margin-bottom: 8px;
         }
 
         .filter-section {
@@ -97,39 +107,46 @@
             transition: all 180ms ease;
         }
 
-        .filter-section select {
-            cursor: pointer;
-            min-width: 160px;
-        }
-        
-        .filter-section input[type="text"] {
-            min-width: 220px;
-        }
+        .filter-section select { cursor: pointer; min-width: 160px; }
+        .filter-section input[type="text"] { min-width: 220px; }
 
         .filter-section select:focus, .filter-section input[type="text"]:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 2px var(--primary-light);
         }
 
-        .btn-export {
-            background-color: var(--primary);
-            color: var(--on-primary);
+        .btn-group {
+            margin-left: auto;
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
             border: none;
             padding: 10px 16px;
             border-radius: 6px;
             font-size: 14px;
             font-weight: 500;
             cursor: pointer;
-            transition: background-color 180ms ease;
-            margin-left: auto;
+            transition: all 180ms ease;
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        .btn-export:hover {
-            background-color: var(--primary-hover);
+        .btn-export {
+            background-color: var(--primary);
+            color: var(--on-primary);
         }
+        .btn-export:hover { background-color: var(--primary-hover); }
+
+        .btn-sync {
+            background-color: var(--surface-1);
+            color: var(--ink);
+            border: 1px solid var(--border);
+        }
+        .btn-sync:hover { background-color: var(--border); }
+        .btn-sync:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .tabs {
             display: flex;
@@ -150,10 +167,7 @@
             transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .tab-btn:hover {
-            color: var(--ink);
-        }
-
+        .tab-btn:hover { color: var(--ink); }
         .tab-btn.active {
             color: var(--primary);
             border-bottom: 2px solid var(--primary);
@@ -168,9 +182,7 @@
             max-height: 75vh;
         }
 
-        .tab-content.active {
-            display: block;
-        }
+        .tab-content.active { display: block; }
 
         table {
             width: 100%;
@@ -199,12 +211,8 @@
             border-bottom: none;
         }
 
-        td {
-            font-size: 14px;
-            color: var(--ink);
-        }
+        td { font-size: 14px; color: var(--ink); }
 
-        /* Desain Baris Total (Sticky Bawah) */
         tfoot td {
             position: sticky;
             bottom: 0;
@@ -216,15 +224,8 @@
             z-index: 9;
         }
 
-        .col-center {
-            text-align: center;
-        }
-
-        .col-nama {
-            min-width: 250px;
-            white-space: normal;
-            line-height: 1.5;
-        }
+        .col-center { text-align: center; }
+        .col-nama { min-width: 250px; white-space: normal; line-height: 1.5; }
 
         .status-badge {
             display: inline-flex;
@@ -237,20 +238,9 @@
             white-space: nowrap;
         }
 
-        .status-urgent {
-            color: var(--urgent);
-            background-color: var(--urgent-bg);
-        }
-
-        .status-warning {
-            color: var(--warning);
-            background-color: var(--warning-bg);
-        }
-
-        .status-normal {
-            color: var(--normal);
-            background-color: var(--normal-bg);
-        }
+        .status-urgent { color: var(--urgent); background-color: var(--urgent-bg); }
+        .status-warning { color: var(--warning); background-color: var(--warning-bg); }
+        .status-normal { color: var(--normal); background-color: var(--normal-bg); }
 
         #loading {
             text-align: center;
@@ -264,8 +254,11 @@
 
 <div class="container">
     <header>
-        <h1>Warehouse Sync & Compare</h1>
-        <p>Menampilkan dan membandingkan data live dari spreadsheet Admin Bongkar dan Putway.</p>
+        <div class="header-title">
+            <h1>Warehouse Sync & Compare</h1>
+            <p>Menampilkan dan membandingkan data live dari spreadsheet Admin Bongkar dan Putway.</p>
+        </div>
+        <div class="sync-info" id="lastSyncTime">Terakhir diperbarui: -</div>
     </header>
 
     <div class="filter-section" id="filter-container" style="display: none;">
@@ -285,14 +278,24 @@
         <label for="searchInput">Cari:</label>
         <input type="text" id="searchInput" placeholder="Ketik Kode / Nama SKU..." onkeyup="applyFilter()">
         
-        <button class="btn-export" onclick="exportToExcel()">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            Export Excel
-        </button>
+        <div class="btn-group">
+            <button class="btn btn-sync" id="btnSync" onclick="fetchData(true)">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+                Sync Data
+            </button>
+            <button class="btn btn-export" onclick="exportToExcel()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Export Excel
+            </button>
+        </div>
     </div>
 
     <div class="tabs">
@@ -318,9 +321,7 @@
                 </tr>
             </thead>
             <tbody></tbody>
-            <tfoot>
-                <!-- Baris Total akan dimuat secara otomatis oleh JavaScript -->
-            </tfoot>
+            <tfoot></tfoot>
         </table>
     </div>
 
@@ -338,6 +339,7 @@
                 </tr>
             </thead>
             <tbody></tbody>
+            <tfoot></tfoot>
         </table>
     </div>
 
@@ -355,6 +357,7 @@
                 </tr>
             </thead>
             <tbody></tbody>
+            <tfoot></tfoot>
         </table>
     </div>
 
@@ -369,14 +372,15 @@
                 </tr>
             </thead>
             <tbody></tbody>
+            <tfoot></tfoot>
         </table>
     </div>
 </div>
 
 <script>
     const SHEET_ID = '1tVpM43QkTT_nMayhjJJpfboIS25-V9dgI6Widk0GAcg';
-    const urlBongkar = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=TIM_1_BONGKAR`;
-    const urlPutway = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=REKAP_DATA_PUTWAY`;
+    const baseUrlBongkar = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=TIM_1_BONGKAR`;
+    const baseUrlPutway = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=REKAP_DATA_PUTWAY`;
 
     let dataBongkar = [];
     let dataPutway = [];
@@ -402,11 +406,20 @@
         return 0; 
     }
 
-    async function fetchData() {
+    // Fungsi Fetch dengan parameter untuk Background Refresh
+    async function fetchData(isBackgroundSync = false) {
+        const btnSync = document.getElementById('btnSync');
+        if (isBackgroundSync) {
+            btnSync.disabled = true;
+            btnSync.innerHTML = '⏳ Menyelaraskan...';
+        }
+
         try {
+            // Menggunakan Date.now() untuk menangkal cache Google
+            const noCacheKey = `&_v=${Date.now()}`;
             const [resBongkar, resPutway] = await Promise.all([
-                fetch(urlBongkar),
-                fetch(urlPutway)
+                fetch(baseUrlBongkar + noCacheKey),
+                fetch(baseUrlPutway + noCacheKey)
             ]);
 
             if (!resBongkar.ok || !resPutway.ok) {
@@ -426,34 +439,58 @@
                 complete: function(results) { dataPutway = results.data; }
             });
 
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('filter-container').style.display = 'flex';
+            if (!isBackgroundSync) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('filter-container').style.display = 'flex';
+            }
             
-            buildFilterAndRender(); 
+            // Catat waktu sinkronisasi terakhir
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('lastSyncTime').innerText = `Terakhir diperbarui: ${timeString}`;
+            
+            buildFilterAndRender(isBackgroundSync); 
         } catch (error) {
-            const loadingElement = document.getElementById('loading');
-            loadingElement.innerText = "Error: " + error.message;
-            loadingElement.style.color = "#DC2626"; 
+            if (!isBackgroundSync) {
+                const loadingElement = document.getElementById('loading');
+                loadingElement.innerText = "Error: " + error.message;
+                loadingElement.style.color = "#DC2626"; 
+            }
             console.error(error);
+        } finally {
+            if (isBackgroundSync) {
+                btnSync.disabled = false;
+                btnSync.innerHTML = `
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg> Sync Data`;
+            }
         }
     }
 
-    function buildFilterAndRender() {
+    function buildFilterAndRender(preserveFilter = false) {
         const dateSet = new Set();
 
         dataBongkar.forEach(row => { if(row['TANGGAL']) dateSet.add(getDateOnly(row['TANGGAL'])); });
         dataPutway.forEach(row => { if(row['TGL']) dateSet.add(getDateOnly(row['TGL'])); });
 
         const uniqueDates = Array.from(dateSet).sort((a, b) => parseDateString(b) - parseDateString(a));
-
         const filterSelect = document.getElementById('dateFilter');
-        filterSelect.innerHTML = '<option value="ALL">Semua Tanggal (Memuat Lebih Lama)</option>';
         
+        // Simpan tanggal yang sedang dipilih sebelum memperbarui dropdown
+        const currentSelection = filterSelect.value;
+        
+        filterSelect.innerHTML = '<option value="ALL">Semua Tanggal (Memuat Lebih Lama)</option>';
         uniqueDates.forEach(date => {
             if(date) filterSelect.innerHTML += `<option value="${date}">${date}</option>`;
         });
 
-        if(uniqueDates.length > 0) {
+        // Kembalikan ke tanggal sebelumnya jika sedang auto-refresh
+        if (preserveFilter && currentSelection) {
+            filterSelect.value = currentSelection;
+        } else if (uniqueDates.length > 0) {
             filterSelect.value = uniqueDates[0]; 
         }
 
@@ -466,18 +503,24 @@
         const searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
         
         const tbodyBongkar = document.querySelector('#table-bongkar tbody');
+        const tfootBongkar = document.querySelector('#table-bongkar tfoot');
+        
         const tbodyPutway = document.querySelector('#table-putway tbody');
+        const tfootPutway = document.querySelector('#table-putway tfoot');
+        
         const tbodyCompare = document.querySelector('#table-compare tbody');
         const tfootCompare = document.querySelector('#table-compare tfoot');
+        
         const tbodyStok = document.querySelector('#table-stok tbody');
+        const tfootStok = document.querySelector('#table-stok tfoot');
 
         let htmlBongkar = "", htmlStok = "", htmlPutway = "", htmlCompare = "";
         const compareData = {};
 
-        // Variabel untuk menghitung Total
-        let totalBongkar = 0;
-        let totalAmbil = 0;
-        let totalSelisih = 0;
+        // Variabel Total Compare
+        let sumCompareBongkar = 0, sumCompareAmbil = 0, sumCompareSelisih = 0;
+        // Variabel Total Tab Lainnya
+        let sumTabBongkar = 0, sumTabPutwayPermintaan = 0, sumTabPutwayAmbil = 0, sumTabStok = 0;
 
         // 1. Loop Data Bongkar
         dataBongkar.forEach(row => {
@@ -489,17 +532,21 @@
             if (filterDate !== "ALL" && dateOnly !== filterDate) return; 
             if (searchQuery && !sku.toLowerCase().includes(searchQuery) && !nama.toLowerCase().includes(searchQuery)) return;
             
+            const qtyBongkar = parseInt(row['QTY BONGKAR'] || 0);
+            
+            // Render HTML Bongkar & Kalkulasi Total Tab Bongkar
             htmlBongkar += `
                 <tr>
                     <td class="col-center">${row['TANGGAL']}</td>
                     <td>${sku}</td>
                     <td class="col-nama">${nama}</td>
                     <td>${row['NOMOR KARUNG'] || '-'}</td>
-                    <td class="col-center mono">${row['QTY BONGKAR'] || '0'}</td>
+                    <td class="col-center mono">${qtyBongkar}</td>
                     <td>${row['LOKASI KARUNG'] || '-'}</td>
                     <td>${row['TIM'] || '-'}</td>
                 </tr>
             `;
+            sumTabBongkar += qtyBongkar;
 
             const sisaStok = parseInt(row['SISA STOCK'] || 0);
             if (sisaStok > 0) {
@@ -511,9 +558,9 @@
                         <td class="col-center mono">${sisaStok}</td>
                     </tr>
                 `;
+                sumTabStok += sisaStok;
             }
 
-            const qtyBongkar = parseInt(row['QTY BONGKAR'] || 0);
             if(!compareData[sku]) {
                 compareData[sku] = { tgl: dateOnly, sku: sku, nama: nama, qtyBongkar: qtyBongkar, qtyAmbil: 0 };
             } else {
@@ -531,19 +578,24 @@
             if (filterDate !== "ALL" && putwayDate !== filterDate) return;
             if (searchQuery && !sku.toLowerCase().includes(searchQuery) && !nama.toLowerCase().includes(searchQuery)) return;
 
+            const qtyPermintaan = parseInt(putway['TOTAL PERMINTAAN'] || 0);
+            const qtyAmbil = parseInt(putway['QTY AMBIL'] || 0);
+
+            // Render HTML Putway & Kalkulasi Total Tab Putway
             htmlPutway += `
                 <tr>
                     <td class="col-center">${putway['TGL']}</td>
                     <td>${sku}</td>
                     <td class="col-nama">${nama}</td>
                     <td>${putway['KONVEKSI'] || '-'}</td>
-                    <td class="col-center mono">${putway['TOTAL PERMINTAAN'] || '0'}</td>
-                    <td class="col-center mono">${putway['QTY AMBIL'] || '0'}</td>
+                    <td class="col-center mono">${qtyPermintaan}</td>
+                    <td class="col-center mono">${qtyAmbil}</td>
                     <td>${putway['PIC'] || '-'}</td>
                 </tr>
             `;
+            sumTabPutwayPermintaan += qtyPermintaan;
+            sumTabPutwayAmbil += qtyAmbil;
 
-            const qtyAmbil = parseInt(putway['QTY AMBIL'] || 0);
             if(!compareData[sku]) {
                 compareData[sku] = { tgl: putwayDate, sku: sku, nama: nama, qtyBongkar: 0, qtyAmbil: qtyAmbil };
             } else {
@@ -552,36 +604,28 @@
             }
         });
 
-        // 3. Render Hasil Compare dan Hitung Total
+        // 3. Render Hasil Compare
         Object.values(compareData).forEach(item => {
             const selisih = item.qtyBongkar - item.qtyAmbil;
-            let statusText = "";
-            let statusHtml = "";
+            let statusText = "", statusHtml = "";
 
             if (item.qtyBongkar === 0 && item.qtyAmbil > 0) {
-                statusText = "Loss Scan";
-                statusHtml = `<span class="status-badge status-urgent">Loss Scan</span>`;
+                statusText = "Loss Scan"; statusHtml = `<span class="status-badge status-urgent">Loss Scan</span>`;
             } else if (item.qtyBongkar > 0 && item.qtyAmbil === 0) {
-                statusText = "Unknown";
-                statusHtml = `<span class="status-badge status-warning">Unknown</span>`;
+                statusText = "Unknown"; statusHtml = `<span class="status-badge status-warning">Unknown</span>`;
             } else if (item.qtyBongkar > item.qtyAmbil) {
-                statusText = "Lebih";
-                statusHtml = `<span class="status-badge status-normal">Lebih</span>`;
+                statusText = "Lebih"; statusHtml = `<span class="status-badge status-normal">Lebih</span>`;
             } else if (item.qtyBongkar < item.qtyAmbil) {
-                statusText = "Kurang";
-                statusHtml = `<span class="status-badge status-urgent">Kurang</span>`;
+                statusText = "Kurang"; statusHtml = `<span class="status-badge status-urgent">Kurang</span>`;
             } else {
-                statusText = "Sesuai";
-                statusHtml = `<span class="status-badge status-normal">Sesuai</span>`;
+                statusText = "Sesuai"; statusHtml = `<span class="status-badge status-normal">Sesuai</span>`;
             }
 
-            // Jika filter status tidak cocok, lewati baris ini dari tabel dan total penjumlahan
             if (filterStatus !== "ALL" && statusText !== filterStatus) return; 
 
-            // Tambahkan ke kalkulasi Total
-            totalBongkar += item.qtyBongkar;
-            totalAmbil += item.qtyAmbil;
-            totalSelisih += selisih;
+            sumCompareBongkar += item.qtyBongkar;
+            sumCompareAmbil += item.qtyAmbil;
+            sumCompareSelisih += selisih;
 
             htmlCompare += `
                 <tr>
@@ -596,19 +640,42 @@
             `;
         });
 
-        tbodyBongkar.innerHTML = htmlBongkar;
-        tbodyStok.innerHTML = htmlStok;
-        tbodyPutway.innerHTML = htmlPutway;
+        // 4. Inject Body & Tfoot (Total) ke Masing-masing Tabel
         tbodyCompare.innerHTML = htmlCompare;
-
-        // Render Baris Total
         tfootCompare.innerHTML = `
             <tr>
                 <td colspan="3" style="text-align: right; padding-right: 24px;">TOTAL KESELURUHAN:</td>
-                <td class="col-center mono" style="color: var(--primary);">${totalBongkar}</td>
-                <td class="col-center mono" style="color: var(--primary);">${totalAmbil}</td>
-                <td class="col-center mono" style="color: var(--primary);">${totalSelisih > 0 ? '+'+totalSelisih : totalSelisih}</td>
+                <td class="col-center mono" style="color: var(--primary);">${sumCompareBongkar}</td>
+                <td class="col-center mono" style="color: var(--primary);">${sumCompareAmbil}</td>
+                <td class="col-center mono" style="color: var(--primary);">${sumCompareSelisih > 0 ? '+'+sumCompareSelisih : sumCompareSelisih}</td>
                 <td></td>
+            </tr>
+        `;
+
+        tbodyBongkar.innerHTML = htmlBongkar;
+        tfootBongkar.innerHTML = `
+            <tr>
+                <td colspan="4" style="text-align: right; padding-right: 24px;">TOTAL BONGKAR:</td>
+                <td class="col-center mono" style="color: var(--primary);">${sumTabBongkar}</td>
+                <td colspan="2"></td>
+            </tr>
+        `;
+
+        tbodyPutway.innerHTML = htmlPutway;
+        tfootPutway.innerHTML = `
+            <tr>
+                <td colspan="4" style="text-align: right; padding-right: 24px;">TOTAL PERMINTAAN & AMBIL:</td>
+                <td class="col-center mono" style="color: var(--primary);">${sumTabPutwayPermintaan}</td>
+                <td class="col-center mono" style="color: var(--primary);">${sumTabPutwayAmbil}</td>
+                <td></td>
+            </tr>
+        `;
+
+        tbodyStok.innerHTML = htmlStok;
+        tfootStok.innerHTML = `
+            <tr>
+                <td colspan="3" style="text-align: right; padding-right: 24px;">TOTAL SISA STOK:</td>
+                <td class="col-center mono" style="color: var(--primary);">${sumTabStok}</td>
             </tr>
         `;
     }
@@ -618,22 +685,25 @@
         const dateStrForFile = selectedDate === 'ALL' ? 'Semua_Tanggal' : selectedDate.replace(/\//g, '-');
         const fileName = `Laporan_Logistik_${dateStrForFile}.xlsx`;
 
-        const tableCompare = document.getElementById('table-compare');
-        const tableBongkar = document.getElementById('table-bongkar');
-        const tablePutway = document.getElementById('table-putway');
-        const tableStok = document.getElementById('table-stok');
-
         const wb = XLSX.utils.book_new();
 
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(tableCompare), "Compare QTY");
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(tableBongkar), "Admin Bongkar");
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(tablePutway), "Permintaan Putway");
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(tableStok), "Sisa Stok");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById('table-compare')), "Compare QTY");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById('table-bongkar')), "Admin Bongkar");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById('table-putway')), "Permintaan Putway");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById('table-stok')), "Sisa Stok");
 
         XLSX.writeFile(wb, fileName);
     }
 
-    document.addEventListener('DOMContentLoaded', fetchData);
+    // Eksekusi data awal
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchData();
+        
+        // Auto Refresh Background setiap 1 Menit (60000 ms)
+        setInterval(() => {
+            fetchData(true);
+        }, 60000);
+    });
 </script>
 
 </body>
