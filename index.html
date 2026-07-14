@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Sinkronisasi Logistik</title>
+    <title>Compare</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -61,11 +61,6 @@
             font-weight: 600;
             letter-spacing: -0.02em;
             margin: 0 0 8px 0;
-        }
-
-        .header-title p {
-            color: var(--ink-muted);
-            margin: 0;
         }
 
         .sync-info {
@@ -256,8 +251,7 @@
 <div class="container">
     <header>
         <div class="header-title">
-            <h1>Warehouse Sync & Compare</h1>
-            <p>Menampilkan dan membandingkan data live dari Bongkar, Putway, dan Recare.</p>
+            <h1>Compare</h1>
         </div>
         <div class="sync-info" id="lastSyncTime">Terakhir diperbarui: -</div>
     </header>
@@ -269,10 +263,8 @@
         <label for="statusFilter">Status:</label>
         <select id="statusFilter" onchange="applyFilter()">
             <option value="ALL">Semua Status</option>
-            <option value="Sesuai">Sesuai (Selisih 0)</option>
-            <option value="Tidak Sesuai">Tidak Sesuai (Semua Selisih)</option>
-            <option value="Kurang">Kurang (Selisih Minus)</option>
-            <option value="Kelebihan">Kelebihan (Selisih Plus)</option>
+            <option value="Sesuai">Sesuai</option>
+            <option value="Tidak Sesuai">Tidak Sesuai</option>
             <option value="Loss Scan">Loss Scan</option>
             <option value="Unknown">Unknown</option>
         </select>
@@ -305,7 +297,7 @@
         <button class="tab-btn" onclick="openTab('tab-bongkar')">Admin Bongkar</button>
         <button class="tab-btn" onclick="openTab('tab-putway')">Permintaan Putway</button>
         <button class="tab-btn" onclick="openTab('tab-recare')">Permintaan Recare</button>
-        <button class="tab-btn" onclick="openTab('tab-stok')">Sisa Stok (> 0)</button>
+        <button class="tab-btn" onclick="openTab('tab-stok')">Sisa Stok</button>
     </div>
 
     <div id="loading">Memuat data dari Google Sheets...</div>
@@ -408,7 +400,7 @@
     const SHEET_ID = '1tVpM43QkTT_nMayhjJJpfboIS25-V9dgI6Widk0GAcg';
     const baseUrlBongkar = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=TIM_1_BONGKAR`;
     const baseUrlPutway = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=REKAP_DATA_PUTWAY`;
-    const baseUrlRecare = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=PERMINTAAN_RECARE`; // Sheet Recare
+    const baseUrlRecare = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=PERMINTAAN_RECARE`;
 
     let dataBongkar = [];
     let dataPutway = [];
@@ -444,7 +436,6 @@
 
         try {
             const noCacheKey = `&_v=${Date.now()}`;
-            // Mengambil 3 data sekaligus
             const [resBongkar, resPutway, resRecare] = await Promise.all([
                 fetch(baseUrlBongkar + noCacheKey),
                 fetch(baseUrlPutway + noCacheKey),
@@ -664,7 +655,7 @@
             }
         });
 
-        // 4. Render Hasil Compare
+        // 4. Render Hasil Compare dengan 4 Status Utama
         Object.values(compareData).forEach(item => {
             const totalAmbil = item.qtyPutway + item.qtyRecare;
             const selisih = item.qtyBongkar - totalAmbil;
@@ -675,17 +666,13 @@
                 statusText = "Loss Scan"; statusHtml = `<span class="status-badge status-urgent">Loss Scan</span>`;
             } else if (item.qtyBongkar > 0 && totalAmbil === 0) {
                 statusText = "Unknown"; statusHtml = `<span class="status-badge status-warning">Unknown</span>`;
-            } else if (item.qtyBongkar > totalAmbil) {
-                statusText = "Kelebihan"; statusHtml = `<span class="status-badge status-normal">Kelebihan</span>`;
-            } else if (item.qtyBongkar < totalAmbil) {
-                statusText = "Kurang"; statusHtml = `<span class="status-badge status-urgent">Kurang</span>`;
+            } else if (selisih !== 0) {
+                statusText = "Tidak Sesuai"; statusHtml = `<span class="status-badge status-urgent">Tidak Sesuai</span>`;
             } else {
                 statusText = "Sesuai"; statusHtml = `<span class="status-badge status-normal">Sesuai</span>`;
             }
 
-            if (filterStatus === "Tidak Sesuai") {
-                if (statusText === "Sesuai") return; 
-            } else if (filterStatus !== "ALL" && statusText !== filterStatus) {
+            if (filterStatus !== "ALL" && statusText !== filterStatus) {
                 return; 
             }
 
