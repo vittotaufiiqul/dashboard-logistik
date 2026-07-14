@@ -60,7 +60,7 @@
             font-size: 32px;
             font-weight: 600;
             letter-spacing: -0.02em;
-            margin: 0 0 8px 0;
+            margin: 0 0 4px 0;
         }
 
         .sync-info {
@@ -70,28 +70,39 @@
             margin-bottom: 8px;
         }
 
+        /* Struktur Filter Baru untuk Kerapian Mobile */
         .filter-section {
             background-color: var(--canvas);
-            padding: 16px 24px;
+            padding: 20px;
             border-radius: 8px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.06);
             margin-bottom: 24px;
             display: flex;
-            align-items: center;
+            align-items: flex-end; /* Menyejajarkan tombol dengan input */
             flex-wrap: wrap;
             gap: 16px;
             border-left: 4px solid var(--primary);
         }
 
-        .filter-section label {
-            font-size: 14px;
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .filter-group.search-group {
+            flex-grow: 1; /* Biarkan pencarian mengambil sisa ruang di desktop */
+        }
+
+        .filter-group label {
+            font-size: 13px;
             font-weight: 600;
-            color: var(--ink);
-            margin-right: -8px;
+            color: var(--ink-muted);
+            margin: 0;
         }
 
         .filter-section select, .filter-section input[type="text"] {
-            padding: 8px 12px;
+            padding: 10px 12px;
             border: 1px solid var(--border);
             border-radius: 6px;
             font-family: inherit;
@@ -103,15 +114,15 @@
         }
 
         .filter-section select { cursor: pointer; min-width: 160px; }
-        .filter-section input[type="text"] { min-width: 220px; }
+        .filter-section input[type="text"] { width: 100%; box-sizing: border-box; }
 
         .filter-section select:focus, .filter-section input[type="text"]:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 2px var(--primary-light);
+            background-color: var(--canvas);
         }
 
         .btn-group {
-            margin-left: auto;
             display: flex;
             gap: 12px;
         }
@@ -126,7 +137,9 @@
             transition: all 180ms ease;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
+            height: 42px; /* Menyamakan tinggi tombol dengan input */
         }
 
         .btn-export {
@@ -143,13 +156,20 @@
         .btn-sync:hover { background-color: var(--border); }
         .btn-sync:disabled { opacity: 0.5; cursor: not-allowed; }
 
+        /* Struktur Tabs Baru (Geser di HP) */
         .tabs {
             display: flex;
-            gap: 16px;
+            gap: 8px;
             border-bottom: 1px solid var(--border);
             margin-bottom: 24px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap; /* Jangan turun ke bawah */
+            overflow-x: auto; /* Bisa digeser */
+            -webkit-overflow-scrolling: touch; /* Halus di iPhone */
+            padding-bottom: 4px; /* Ruang untuk scrollbar */
         }
+
+        /* Menyembunyikan scrollbar bawaan di tab agar rapi */
+        .tabs::-webkit-scrollbar { height: 0px; background: transparent; }
 
         .tab-btn {
             background: none;
@@ -161,6 +181,8 @@
             cursor: pointer;
             border-bottom: 2px solid transparent;
             transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap; /* Teks tidak turun ke bawah */
+            flex-shrink: 0; /* Tab tidak mengecil */
         }
 
         .tab-btn:hover { color: var(--ink); }
@@ -175,6 +197,7 @@
             border-radius: 12px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
             max-height: 75vh;
         }
 
@@ -244,6 +267,45 @@
             color: var(--primary);
             font-weight: 500;
         }
+
+        /* --- PENGATURAN KHUSUS LAYAR HP (MOBILE RESPONSIVE) --- */
+        @media screen and (max-width: 768px) {
+            .container { padding: 16px 12px; }
+            
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                margin-bottom: 16px;
+            }
+            .header-title h1 { font-size: 26px; }
+            .sync-info { text-align: left; margin-bottom: 0; }
+            
+            .filter-section {
+                flex-direction: column;
+                align-items: stretch; /* Mengisi lebar penuh */
+                gap: 12px;
+                padding: 16px;
+            }
+            
+            .filter-group, .filter-section select {
+                width: 100%; /* Dropdown lebar penuh */
+            }
+            
+            .btn-group {
+                width: 100%;
+                margin-top: 4px;
+            }
+            
+            .btn {
+                flex: 1; /* Tombol berbagi 50-50 ukuran */
+                padding: 10px 8px;
+                font-size: 13px;
+            }
+            
+            th, td {
+                padding: 10px 12px; /* Kurangi jarak tabel agar lebih ringkas di HP */
+            }
+        }
     </style>
 </head>
 <body>
@@ -257,21 +319,32 @@
     </header>
 
     <div class="filter-section" id="filter-container" style="display: none;">
-        <label for="dateFilter">Tanggal:</label>
-        <select id="dateFilter" onchange="applyFilter()"></select>
-
-        <label for="statusFilter">Status:</label>
-        <select id="statusFilter" onchange="applyFilter()">
-            <option value="ALL">Semua Status</option>
-            <option value="Sesuai">Sesuai</option>
-            <option value="Tidak Sesuai">Tidak Sesuai (Semua Selisih)</option>
-            <option value="Loss Scan">Loss Scan</option>
-            <option value="Unknown">Unknown</option>
-        </select>
-
-        <label for="searchInput">Cari:</label>
-        <input type="text" id="searchInput" placeholder="Ketik Kode / Nama SKU..." onkeyup="applyFilter()">
         
+        <!-- Grup Filter: Tanggal -->
+        <div class="filter-group">
+            <label for="dateFilter">Tanggal:</label>
+            <select id="dateFilter" onchange="applyFilter()"></select>
+        </div>
+
+        <!-- Grup Filter: Status -->
+        <div class="filter-group">
+            <label for="statusFilter">Status:</label>
+            <select id="statusFilter" onchange="applyFilter()">
+                <option value="ALL">Semua Status</option>
+                <option value="Sesuai">Sesuai</option>
+                <option value="Tidak Sesuai">Tidak Sesuai (Semua Selisih)</option>
+                <option value="Loss Scan">Loss Scan</option>
+                <option value="Unknown">Unknown</option>
+            </select>
+        </div>
+
+        <!-- Grup Filter: Cari -->
+        <div class="filter-group search-group">
+            <label for="searchInput">Cari:</label>
+            <input type="text" id="searchInput" placeholder="Ketik Kode / Nama SKU..." onkeyup="applyFilter()">
+        </div>
+        
+        <!-- Grup Tombol -->
         <div class="btn-group">
             <button class="btn btn-sync" id="btnSync" onclick="fetchData(true)">
                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -292,6 +365,7 @@
         </div>
     </div>
 
+    <!-- Container Tabs Geser -->
     <div class="tabs">
         <button class="tab-btn active" onclick="openTab('tab-compare')">Compare QTY</button>
         <button class="tab-btn" onclick="openTab('tab-bongkar')">Admin Bongkar</button>
@@ -478,7 +552,7 @@
                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <polyline points="23 4 23 10 17 10"></polyline>
                     <polyline points="1 20 1 14 7 14"></polyline>
-                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    <path d="M3.51 9a9 9 0 0 0 20.49 15"></path>
                 </svg> Sync Data`;
             }
         }
@@ -538,7 +612,6 @@
         let sumTabPutwayPermintaan = 0, sumTabPutwayAmbil = 0;
         let sumTabRecarePermintaan = 0, sumTabRecareAmbil = 0;
 
-        // 1. Loop Data Bongkar
         dataBongkar.forEach(row => {
             if(!row['TANGGAL']) return; 
             const dateOnly = getDateOnly(row['TANGGAL']);
@@ -583,7 +656,6 @@
             }
         });
 
-        // 2. Loop Data Putway
         dataPutway.forEach(putway => {
             const rawDate = putway['TGL'] || putway['TANGGAL'];
             if(!rawDate) return;
@@ -619,7 +691,6 @@
             }
         });
 
-        // 3. Loop Data Recare
         dataRecare.forEach(recare => {
             const rawDate = recare['TANGGAL'] || recare['TGL'];
             if(!rawDate) return;
@@ -655,7 +726,6 @@
             }
         });
 
-        // 4. Render Hasil Compare
         Object.values(compareData).forEach(item => {
             const totalAmbil = item.qtyPutway + item.qtyRecare;
             const selisih = item.qtyBongkar - totalAmbil;
@@ -672,9 +742,8 @@
                 statusText = "Sesuai"; statusHtml = `<span class="status-badge status-normal">Sesuai</span>`;
             }
 
-            // Logika Filter Master "Tidak Sesuai"
             if (filterStatus === "Tidak Sesuai") {
-                if (statusText === "Sesuai") return; // Tampilkan Loss Scan, Unknown, dan Tidak Sesuai
+                if (statusText === "Sesuai") return; 
             } else if (filterStatus !== "ALL" && statusText !== filterStatus) {
                 return; 
             }
