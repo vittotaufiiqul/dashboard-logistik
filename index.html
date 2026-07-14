@@ -46,7 +46,7 @@
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 32px 16px;
+            padding: 24px 16px;
         }
 
         header {
@@ -60,7 +60,7 @@
             font-size: 32px;
             font-weight: 600;
             letter-spacing: -0.02em;
-            margin: 0 0 8px 0;
+            margin: 0 0 4px 0;
         }
 
         .sync-info {
@@ -126,6 +126,7 @@
             transition: all 180ms ease;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
         }
 
@@ -175,6 +176,7 @@
             border-radius: 12px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch; /* Smooth scroll di iOS */
             max-height: 75vh;
         }
 
@@ -243,6 +245,53 @@
             padding: 40px;
             color: var(--primary);
             font-weight: 500;
+        }
+
+        /* --- PENGATURAN KHUSUS HP (MOBILE RESPONSIVE) --- */
+        @media screen and (max-width: 768px) {
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            .header-title h1 {
+                font-size: 26px;
+            }
+            .sync-info {
+                text-align: left;
+                margin-bottom: 0;
+            }
+            .filter-section {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+                padding: 16px;
+            }
+            .filter-section label {
+                margin-bottom: -8px;
+                margin-right: 0;
+            }
+            .filter-section select, .filter-section input[type="text"] {
+                width: 100%;
+                box-sizing: border-box;
+                min-width: unset;
+            }
+            .btn-group {
+                width: 100%;
+                margin-top: 8px;
+            }
+            .btn {
+                flex: 1; /* Membuat kedua tombol berbagi ruang sama besar */
+            }
+            .tabs {
+                flex-wrap: nowrap;
+                overflow-x: auto; /* Agar menu tab bisa digeser ke samping di HP */
+                -webkit-overflow-scrolling: touch;
+                padding-bottom: 4px;
+            }
+            .tab-btn {
+                white-space: nowrap;
+            }
         }
     </style>
 </head>
@@ -655,7 +704,7 @@
             }
         });
 
-        // 4. Render Hasil Compare dengan 4 Status Utama
+        // 4. Render Hasil Compare dengan Status Baru
         Object.values(compareData).forEach(item => {
             const totalAmbil = item.qtyPutway + item.qtyRecare;
             const selisih = item.qtyBongkar - totalAmbil;
@@ -672,7 +721,9 @@
                 statusText = "Sesuai"; statusHtml = `<span class="status-badge status-normal">Sesuai</span>`;
             }
 
-            if (filterStatus !== "ALL" && statusText !== filterStatus) {
+            if (filterStatus === "Tidak Sesuai") {
+                if (statusText === "Sesuai") return; 
+            } else if (filterStatus !== "ALL" && statusText !== filterStatus) {
                 return; 
             }
 
