@@ -153,6 +153,7 @@
             gap: 16px;
             border-bottom: 1px solid var(--border);
             margin-bottom: 24px;
+            flex-wrap: wrap;
         }
 
         .tab-btn {
@@ -225,7 +226,7 @@
         }
 
         .col-center { text-align: center; }
-        .col-nama { min-width: 250px; white-space: normal; line-height: 1.5; }
+        .col-nama { min-width: 200px; white-space: normal; line-height: 1.5; }
 
         .status-badge {
             display: inline-flex;
@@ -256,7 +257,7 @@
     <header>
         <div class="header-title">
             <h1>Warehouse Sync & Compare</h1>
-            <p>Menampilkan dan membandingkan data live dari spreadsheet Admin Bongkar dan Putway.</p>
+            <p>Menampilkan dan membandingkan data live dari Bongkar, Putway, dan Recare.</p>
         </div>
         <div class="sync-info" id="lastSyncTime">Terakhir diperbarui: -</div>
     </header>
@@ -303,11 +304,13 @@
         <button class="tab-btn active" onclick="openTab('tab-compare')">Compare QTY</button>
         <button class="tab-btn" onclick="openTab('tab-bongkar')">Admin Bongkar</button>
         <button class="tab-btn" onclick="openTab('tab-putway')">Permintaan Putway</button>
+        <button class="tab-btn" onclick="openTab('tab-recare')">Permintaan Recare</button>
         <button class="tab-btn" onclick="openTab('tab-stok')">Sisa Stok (> 0)</button>
     </div>
 
     <div id="loading">Memuat data dari Google Sheets...</div>
 
+    <!-- TAB: COMPARE -->
     <div id="tab-compare" class="tab-content active">
         <table id="table-compare">
             <thead>
@@ -316,7 +319,8 @@
                     <th>Kode SKU</th>
                     <th class="col-nama">Nama SKU</th>
                     <th class="col-center">QTY Bongkar</th>
-                    <th class="col-center">QTY Ambil</th>
+                    <th class="col-center">QTY Putway</th>
+                    <th class="col-center">QTY Recare</th>
                     <th class="col-center">Selisih</th>
                     <th class="col-center">Status</th>
                 </tr>
@@ -326,6 +330,7 @@
         </table>
     </div>
 
+    <!-- TAB: BONGKAR -->
     <div id="tab-bongkar" class="tab-content">
         <table id="table-bongkar">
             <thead>
@@ -344,6 +349,7 @@
         </table>
     </div>
 
+    <!-- TAB: PUTWAY -->
     <div id="tab-putway" class="tab-content">
         <table id="table-putway">
             <thead>
@@ -362,6 +368,26 @@
         </table>
     </div>
 
+    <!-- TAB: RECARE -->
+    <div id="tab-recare" class="tab-content">
+        <table id="table-recare">
+            <thead>
+                <tr>
+                    <th class="col-center">Tanggal</th>
+                    <th>Kode SKU</th>
+                    <th class="col-nama">Nama SKU</th>
+                    <th>Konveksi</th>
+                    <th class="col-center">Permintaan</th>
+                    <th class="col-center">QTY Ambil</th>
+                    <th>PIC</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot></tfoot>
+        </table>
+    </div>
+
+    <!-- TAB: STOK -->
     <div id="tab-stok" class="tab-content">
         <table id="table-stok">
             <thead>
@@ -382,9 +408,11 @@
     const SHEET_ID = '1tVpM43QkTT_nMayhjJJpfboIS25-V9dgI6Widk0GAcg';
     const baseUrlBongkar = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=TIM_1_BONGKAR`;
     const baseUrlPutway = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=REKAP_DATA_PUTWAY`;
+    const baseUrlRecare = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=PERMINTAAN_RECARE`; // Sheet Recare
 
     let dataBongkar = [];
     let dataPutway = [];
+    let dataRecare = [];
 
     function openTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -416,27 +444,24 @@
 
         try {
             const noCacheKey = `&_v=${Date.now()}`;
-            const [resBongkar, resPutway] = await Promise.all([
+            // Mengambil 3 data sekaligus
+            const [resBongkar, resPutway, resRecare] = await Promise.all([
                 fetch(baseUrlBongkar + noCacheKey),
-                fetch(baseUrlPutway + noCacheKey)
+                fetch(baseUrlPutway + noCacheKey),
+                fetch(baseUrlRecare + noCacheKey)
             ]);
 
-            if (!resBongkar.ok || !resPutway.ok) {
-                throw new Error(`Akses diblokir. Pastikan file sudah diatur "Publikasikan ke Web".`);
+            if (!resBongkar.ok || !resPutway.ok || !resRecare.ok) {
+                throw new Error(`Akses diblokir. Pastikan file Google Sheets sudah "Publikasikan ke Web".`);
             }
 
             const csvBongkar = await resBongkar.text();
             const csvPutway = await resPutway.text();
+            const csvRecare = await resRecare.text();
 
-            Papa.parse(csvBongkar, {
-                header: true, skipEmptyLines: true,
-                complete: function(results) { dataBongkar = results.data; }
-            });
-
-            Papa.parse(csvPutway, {
-                header: true, skipEmptyLines: true,
-                complete: function(results) { dataPutway = results.data; }
-            });
+            Papa.parse(csvBongkar, { header: true, skipEmptyLines: true, complete: function(results) { dataBongkar = results.data; } });
+            Papa.parse(csvPutway, { header: true, skipEmptyLines: true, complete: function(results) { dataPutway = results.data; } });
+            Papa.parse(csvRecare, { header: true, skipEmptyLines: true, complete: function(results) { dataRecare = results.data; } });
 
             if (!isBackgroundSync) {
                 document.getElementById('loading').style.display = 'none';
@@ -472,7 +497,8 @@
         const dateSet = new Set();
 
         dataBongkar.forEach(row => { if(row['TANGGAL']) dateSet.add(getDateOnly(row['TANGGAL'])); });
-        dataPutway.forEach(row => { if(row['TGL']) dateSet.add(getDateOnly(row['TGL'])); });
+        dataPutway.forEach(row => { if(row['TGL'] || row['TANGGAL']) dateSet.add(getDateOnly(row['TGL'] || row['TANGGAL'])); });
+        dataRecare.forEach(row => { if(row['TGL'] || row['TANGGAL']) dateSet.add(getDateOnly(row['TGL'] || row['TANGGAL'])); });
 
         const uniqueDates = Array.from(dateSet).sort((a, b) => parseDateString(b) - parseDateString(a));
         const filterSelect = document.getElementById('dateFilter');
@@ -503,6 +529,9 @@
         
         const tbodyPutway = document.querySelector('#table-putway tbody');
         const tfootPutway = document.querySelector('#table-putway tfoot');
+
+        const tbodyRecare = document.querySelector('#table-recare tbody');
+        const tfootRecare = document.querySelector('#table-recare tfoot');
         
         const tbodyCompare = document.querySelector('#table-compare tbody');
         const tfootCompare = document.querySelector('#table-compare tfoot');
@@ -510,12 +539,15 @@
         const tbodyStok = document.querySelector('#table-stok tbody');
         const tfootStok = document.querySelector('#table-stok tfoot');
 
-        let htmlBongkar = "", htmlStok = "", htmlPutway = "", htmlCompare = "";
+        let htmlBongkar = "", htmlStok = "", htmlPutway = "", htmlRecare = "", htmlCompare = "";
         const compareData = {};
 
-        let sumCompareBongkar = 0, sumCompareAmbil = 0, sumCompareSelisih = 0;
-        let sumTabBongkar = 0, sumTabPutwayPermintaan = 0, sumTabPutwayAmbil = 0, sumTabStok = 0;
+        let sumCompareBongkar = 0, sumComparePutway = 0, sumCompareRecare = 0, sumCompareSelisih = 0;
+        let sumTabBongkar = 0, sumTabStok = 0;
+        let sumTabPutwayPermintaan = 0, sumTabPutwayAmbil = 0;
+        let sumTabRecarePermintaan = 0, sumTabRecareAmbil = 0;
 
+        // 1. Loop Data Bongkar
         dataBongkar.forEach(row => {
             if(!row['TANGGAL']) return; 
             const dateOnly = getDateOnly(row['TANGGAL']);
@@ -554,15 +586,17 @@
             }
 
             if(!compareData[sku]) {
-                compareData[sku] = { tgl: dateOnly, sku: sku, nama: nama, qtyBongkar: qtyBongkar, qtyAmbil: 0 };
+                compareData[sku] = { tgl: dateOnly, sku: sku, nama: nama, qtyBongkar: qtyBongkar, qtyPutway: 0, qtyRecare: 0 };
             } else {
                 compareData[sku].qtyBongkar += qtyBongkar;
             }
         });
 
+        // 2. Loop Data Putway
         dataPutway.forEach(putway => {
-            if(!putway['TGL']) return;
-            const putwayDate = getDateOnly(putway['TGL']);
+            const rawDate = putway['TGL'] || putway['TANGGAL'];
+            if(!rawDate) return;
+            const putwayDate = getDateOnly(rawDate);
             const sku = putway['KODE SKU'] || '';
             const nama = putway['NAMA SKU'] || '';
 
@@ -574,7 +608,7 @@
 
             htmlPutway += `
                 <tr>
-                    <td class="col-center">${putway['TGL']}</td>
+                    <td class="col-center">${rawDate}</td>
                     <td>${sku}</td>
                     <td class="col-nama">${nama}</td>
                     <td>${putway['KONVEKSI'] || '-'}</td>
@@ -587,38 +621,77 @@
             sumTabPutwayAmbil += qtyAmbil;
 
             if(!compareData[sku]) {
-                compareData[sku] = { tgl: putwayDate, sku: sku, nama: nama, qtyBongkar: 0, qtyAmbil: qtyAmbil };
+                compareData[sku] = { tgl: putwayDate, sku: sku, nama: nama, qtyBongkar: 0, qtyPutway: qtyAmbil, qtyRecare: 0 };
             } else {
-                compareData[sku].qtyAmbil += qtyAmbil;
+                compareData[sku].qtyPutway += qtyAmbil;
                 compareData[sku].nama = compareData[sku].nama || nama;
             }
         });
 
+        // 3. Loop Data Recare
+        dataRecare.forEach(recare => {
+            const rawDate = recare['TANGGAL'] || recare['TGL'];
+            if(!rawDate) return;
+            const recareDate = getDateOnly(rawDate);
+            const sku = recare['KODE SKU'] || '';
+            const nama = recare['NAMA SKU'] || '';
+
+            if (filterDate !== "ALL" && recareDate !== filterDate) return;
+            if (searchQuery && !sku.toLowerCase().includes(searchQuery) && !nama.toLowerCase().includes(searchQuery)) return;
+
+            const qtyPermintaan = parseInt(recare['TOTAL PERMINTAAN'] || 0);
+            const qtyAmbil = parseInt(recare['QTY AMBIL'] || 0);
+
+            htmlRecare += `
+                <tr>
+                    <td class="col-center">${rawDate}</td>
+                    <td>${sku}</td>
+                    <td class="col-nama">${nama}</td>
+                    <td>${recare['KONVEKSI'] || '-'}</td>
+                    <td class="col-center mono">${qtyPermintaan}</td>
+                    <td class="col-center mono">${qtyAmbil}</td>
+                    <td>${recare['PIC'] || '-'}</td>
+                </tr>
+            `;
+            sumTabRecarePermintaan += qtyPermintaan;
+            sumTabRecareAmbil += qtyAmbil;
+
+            if(!compareData[sku]) {
+                compareData[sku] = { tgl: recareDate, sku: sku, nama: nama, qtyBongkar: 0, qtyPutway: 0, qtyRecare: qtyAmbil };
+            } else {
+                compareData[sku].qtyRecare += qtyAmbil;
+                compareData[sku].nama = compareData[sku].nama || nama;
+            }
+        });
+
+        // 4. Render Hasil Compare
         Object.values(compareData).forEach(item => {
-            const selisih = item.qtyBongkar - item.qtyAmbil;
+            const totalAmbil = item.qtyPutway + item.qtyRecare;
+            const selisih = item.qtyBongkar - totalAmbil;
+            
             let statusText = "", statusHtml = "";
 
-            if (item.qtyBongkar === 0 && item.qtyAmbil > 0) {
+            if (item.qtyBongkar === 0 && totalAmbil > 0) {
                 statusText = "Loss Scan"; statusHtml = `<span class="status-badge status-urgent">Loss Scan</span>`;
-            } else if (item.qtyBongkar > 0 && item.qtyAmbil === 0) {
+            } else if (item.qtyBongkar > 0 && totalAmbil === 0) {
                 statusText = "Unknown"; statusHtml = `<span class="status-badge status-warning">Unknown</span>`;
-            } else if (item.qtyBongkar > item.qtyAmbil) {
+            } else if (item.qtyBongkar > totalAmbil) {
                 statusText = "Kelebihan"; statusHtml = `<span class="status-badge status-normal">Kelebihan</span>`;
-            } else if (item.qtyBongkar < item.qtyAmbil) {
+            } else if (item.qtyBongkar < totalAmbil) {
                 statusText = "Kurang"; statusHtml = `<span class="status-badge status-urgent">Kurang</span>`;
             } else {
                 statusText = "Sesuai"; statusHtml = `<span class="status-badge status-normal">Sesuai</span>`;
             }
 
-            // Logika Filter Status 
             if (filterStatus === "Tidak Sesuai") {
-                if (statusText === "Sesuai") return; // Sembunyikan yang Sesuai
+                if (statusText === "Sesuai") return; 
             } else if (filterStatus !== "ALL" && statusText !== filterStatus) {
-                return; // Sembunyikan yang tidak cocok dengan status spesifik
+                return; 
             }
 
             sumCompareBongkar += item.qtyBongkar;
-            sumCompareAmbil += item.qtyAmbil;
+            sumComparePutway += item.qtyPutway;
+            sumCompareRecare += item.qtyRecare;
             sumCompareSelisih += selisih;
 
             htmlCompare += `
@@ -627,7 +700,8 @@
                     <td>${item.sku}</td>
                     <td class="col-nama">${item.nama}</td>
                     <td class="col-center mono">${item.qtyBongkar}</td>
-                    <td class="col-center mono">${item.qtyAmbil}</td>
+                    <td class="col-center mono">${item.qtyPutway}</td>
+                    <td class="col-center mono">${item.qtyRecare}</td>
                     <td class="col-center mono">${selisih > 0 ? '+'+selisih : selisih}</td>
                     <td class="col-center">${statusHtml}</td>
                 </tr>
@@ -639,7 +713,8 @@
             <tr>
                 <td colspan="3" style="text-align: right; padding-right: 24px;">TOTAL KESELURUHAN:</td>
                 <td class="col-center mono" style="color: var(--primary);">${sumCompareBongkar}</td>
-                <td class="col-center mono" style="color: var(--primary);">${sumCompareAmbil}</td>
+                <td class="col-center mono" style="color: var(--primary);">${sumComparePutway}</td>
+                <td class="col-center mono" style="color: var(--primary);">${sumCompareRecare}</td>
                 <td class="col-center mono" style="color: var(--primary);">${sumCompareSelisih > 0 ? '+'+sumCompareSelisih : sumCompareSelisih}</td>
                 <td></td>
             </tr>
@@ -664,6 +739,16 @@
             </tr>
         `;
 
+        tbodyRecare.innerHTML = htmlRecare;
+        tfootRecare.innerHTML = `
+            <tr>
+                <td colspan="4" style="text-align: right; padding-right: 24px;">TOTAL PERMINTAAN & AMBIL:</td>
+                <td class="col-center mono" style="color: var(--primary);">${sumTabRecarePermintaan}</td>
+                <td class="col-center mono" style="color: var(--primary);">${sumTabRecareAmbil}</td>
+                <td></td>
+            </tr>
+        `;
+
         tbodyStok.innerHTML = htmlStok;
         tfootStok.innerHTML = `
             <tr>
@@ -683,6 +768,7 @@
         XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById('table-compare')), "Compare QTY");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById('table-bongkar')), "Admin Bongkar");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById('table-putway')), "Permintaan Putway");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById('table-recare')), "Permintaan Recare");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById('table-stok')), "Sisa Stok");
 
         XLSX.writeFile(wb, fileName);
