@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Compare</title>
+    <title>Dashboard Sinkronisasi Logistik</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -70,7 +70,6 @@
             margin-bottom: 8px;
         }
 
-        /* Struktur Filter Baru untuk Kerapian Mobile */
         .filter-section {
             background-color: var(--canvas);
             padding: 20px;
@@ -78,7 +77,7 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.06);
             margin-bottom: 24px;
             display: flex;
-            align-items: flex-end; /* Menyejajarkan tombol dengan input */
+            align-items: flex-end; 
             flex-wrap: wrap;
             gap: 16px;
             border-left: 4px solid var(--primary);
@@ -91,7 +90,7 @@
         }
 
         .filter-group.search-group {
-            flex-grow: 1; /* Biarkan pencarian mengambil sisa ruang di desktop */
+            flex-grow: 1; 
         }
 
         .filter-group label {
@@ -139,36 +138,27 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            height: 42px; /* Menyamakan tinggi tombol dengan input */
+            height: 42px; 
         }
 
-        .btn-export {
-            background-color: var(--primary);
-            color: var(--on-primary);
-        }
+        .btn-export { background-color: var(--primary); color: var(--on-primary); }
         .btn-export:hover { background-color: var(--primary-hover); }
 
-        .btn-sync {
-            background-color: var(--surface-1);
-            color: var(--ink);
-            border: 1px solid var(--border);
-        }
+        .btn-sync { background-color: var(--surface-1); color: var(--ink); border: 1px solid var(--border); }
         .btn-sync:hover { background-color: var(--border); }
         .btn-sync:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* Struktur Tabs Baru (Geser di HP) */
         .tabs {
             display: flex;
             gap: 8px;
             border-bottom: 1px solid var(--border);
             margin-bottom: 24px;
-            flex-wrap: nowrap; /* Jangan turun ke bawah */
-            overflow-x: auto; /* Bisa digeser */
-            -webkit-overflow-scrolling: touch; /* Halus di iPhone */
-            padding-bottom: 4px; /* Ruang untuk scrollbar */
+            flex-wrap: nowrap; 
+            overflow-x: auto; 
+            -webkit-overflow-scrolling: touch; 
+            padding-bottom: 4px; 
         }
 
-        /* Menyembunyikan scrollbar bawaan di tab agar rapi */
         .tabs::-webkit-scrollbar { height: 0px; background: transparent; }
 
         .tab-btn {
@@ -181,15 +171,12 @@
             cursor: pointer;
             border-bottom: 2px solid transparent;
             transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
-            white-space: nowrap; /* Teks tidak turun ke bawah */
-            flex-shrink: 0; /* Tab tidak mengecil */
+            white-space: nowrap; 
+            flex-shrink: 0; 
         }
 
         .tab-btn:hover { color: var(--ink); }
-        .tab-btn.active {
-            color: var(--primary);
-            border-bottom: 2px solid var(--primary);
-        }
+        .tab-btn.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
 
         .tab-content {
             display: none;
@@ -268,43 +255,19 @@
             font-weight: 500;
         }
 
-        /* --- PENGATURAN KHUSUS LAYAR HP (MOBILE RESPONSIVE) --- */
         @media screen and (max-width: 768px) {
             .container { padding: 16px 12px; }
-            
-            header {
-                flex-direction: column;
-                align-items: flex-start;
-                margin-bottom: 16px;
-            }
+            header { flex-direction: column; align-items: flex-start; margin-bottom: 16px; }
             .header-title h1 { font-size: 26px; }
             .sync-info { text-align: left; margin-bottom: 0; }
             
             .filter-section {
-                flex-direction: column;
-                align-items: stretch; /* Mengisi lebar penuh */
-                gap: 12px;
-                padding: 16px;
+                flex-direction: column; align-items: stretch; gap: 12px; padding: 16px;
             }
-            
-            .filter-group, .filter-section select {
-                width: 100%; /* Dropdown lebar penuh */
-            }
-            
-            .btn-group {
-                width: 100%;
-                margin-top: 4px;
-            }
-            
-            .btn {
-                flex: 1; /* Tombol berbagi 50-50 ukuran */
-                padding: 10px 8px;
-                font-size: 13px;
-            }
-            
-            th, td {
-                padding: 10px 12px; /* Kurangi jarak tabel agar lebih ringkas di HP */
-            }
+            .filter-group, .filter-section select { width: 100%; }
+            .btn-group { width: 100%; margin-top: 4px; }
+            .btn { flex: 1; padding: 10px 8px; font-size: 13px; }
+            th, td { padding: 10px 12px; }
         }
     </style>
 </head>
@@ -320,13 +283,11 @@
 
     <div class="filter-section" id="filter-container" style="display: none;">
         
-        <!-- Grup Filter: Tanggal -->
         <div class="filter-group">
             <label for="dateFilter">Tanggal:</label>
             <select id="dateFilter" onchange="applyFilter()"></select>
         </div>
 
-        <!-- Grup Filter: Status -->
         <div class="filter-group">
             <label for="statusFilter">Status:</label>
             <select id="statusFilter" onchange="applyFilter()">
@@ -338,13 +299,11 @@
             </select>
         </div>
 
-        <!-- Grup Filter: Cari -->
         <div class="filter-group search-group">
             <label for="searchInput">Cari:</label>
             <input type="text" id="searchInput" placeholder="Ketik Kode / Nama SKU..." onkeyup="applyFilter()">
         </div>
         
-        <!-- Grup Tombol -->
         <div class="btn-group">
             <button class="btn btn-sync" id="btnSync" onclick="fetchData(true)">
                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -368,6 +327,7 @@
     <!-- Container Tabs Geser -->
     <div class="tabs">
         <button class="tab-btn active" onclick="openTab('tab-compare')">Compare QTY</button>
+        <button class="tab-btn" onclick="openTab('tab-lokasi')">Lokasi Putway</button>
         <button class="tab-btn" onclick="openTab('tab-bongkar')">Admin Bongkar</button>
         <button class="tab-btn" onclick="openTab('tab-putway')">Permintaan Putway</button>
         <button class="tab-btn" onclick="openTab('tab-recare')">Permintaan Recare</button>
@@ -389,6 +349,24 @@
                     <th class="col-center">QTY Recare</th>
                     <th class="col-center">Selisih</th>
                     <th class="col-center">Status</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot></tfoot>
+        </table>
+    </div>
+
+    <!-- TAB BARU: LOKASI PUTWAY (PICK LIST) -->
+    <div id="tab-lokasi" class="tab-content">
+        <table id="table-lokasi">
+            <thead>
+                <tr>
+                    <th class="col-center">Tanggal</th>
+                    <th>Kode SKU</th>
+                    <th class="col-nama">Nama SKU</th>
+                    <th>No. Rak</th>
+                    <th>No. Karung</th>
+                    <th class="col-center">QTY Ambil</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -594,6 +572,10 @@
         
         const tbodyPutway = document.querySelector('#table-putway tbody');
         const tfootPutway = document.querySelector('#table-putway tfoot');
+        
+        // Tab Lokasi Putway
+        const tbodyLokasi = document.querySelector('#table-lokasi tbody');
+        const tfootLokasi = document.querySelector('#table-lokasi tfoot');
 
         const tbodyRecare = document.querySelector('#table-recare tbody');
         const tfootRecare = document.querySelector('#table-recare tfoot');
@@ -604,20 +586,31 @@
         const tbodyStok = document.querySelector('#table-stok tbody');
         const tfootStok = document.querySelector('#table-stok tfoot');
 
-        let htmlBongkar = "", htmlStok = "", htmlPutway = "", htmlRecare = "", htmlCompare = "";
+        let htmlBongkar = "", htmlStok = "", htmlPutway = "", htmlLokasi = "", htmlRecare = "", htmlCompare = "";
+        
         const compareData = {};
+        const bongkarInfo = {}; // Kamus pintar untuk mencari No Rak dan No Karung
 
         let sumCompareBongkar = 0, sumComparePutway = 0, sumCompareRecare = 0, sumCompareSelisih = 0;
-        let sumTabBongkar = 0, sumTabStok = 0;
+        let sumTabBongkar = 0, sumTabStok = 0, sumTabLokasiAmbil = 0;
         let sumTabPutwayPermintaan = 0, sumTabPutwayAmbil = 0;
         let sumTabRecarePermintaan = 0, sumTabRecareAmbil = 0;
 
+        // 1. Loop Data Bongkar
         dataBongkar.forEach(row => {
             if(!row['TANGGAL']) return; 
             const dateOnly = getDateOnly(row['TANGGAL']);
             const sku = row['KODE SKU'] || '';
             const nama = row['NAMA SKU'] || '';
             
+            // Simpan info rak & karung ke kamus memori untuk diakses oleh tab Lokasi
+            if (!bongkarInfo[sku]) {
+                bongkarInfo[sku] = {
+                    karung: row['NOMOR KARUNG'] || '-',
+                    rak: row['DETAIL NOMOR RAK'] || row['LOKASI KARUNG'] || '-'
+                };
+            }
+
             if (filterDate !== "ALL" && dateOnly !== filterDate) return; 
             if (searchQuery && !sku.toLowerCase().includes(searchQuery) && !nama.toLowerCase().includes(searchQuery)) return;
             
@@ -656,6 +649,7 @@
             }
         });
 
+        // 2. Loop Data Putway (Sekaligus membangun tab Lokasi Putway)
         dataPutway.forEach(putway => {
             const rawDate = putway['TGL'] || putway['TANGGAL'];
             if(!rawDate) return;
@@ -683,6 +677,23 @@
             sumTabPutwayPermintaan += qtyPermintaan;
             sumTabPutwayAmbil += qtyAmbil;
 
+            // Render Tab Lokasi Putway 
+            const bInfo = bongkarInfo[sku] || {};
+            const noRak = putway['NO RAK'] || putway['DETAIL NOMOR RAK'] || bInfo.rak || '-';
+            const noKarung = putway['NO KARUNG'] || putway['NOMOR KARUNG'] || bInfo.karung || '-';
+
+            htmlLokasi += `
+                <tr>
+                    <td class="col-center">${rawDate}</td>
+                    <td>${sku}</td>
+                    <td class="col-nama">${nama}</td>
+                    <td>${noRak}</td>
+                    <td>${noKarung}</td>
+                    <td class="col-center mono">${qtyAmbil}</td>
+                </tr>
+            `;
+            sumTabLokasiAmbil += qtyAmbil;
+
             if(!compareData[sku]) {
                 compareData[sku] = { tgl: putwayDate, sku: sku, nama: nama, qtyBongkar: 0, qtyPutway: qtyAmbil, qtyRecare: 0 };
             } else {
@@ -691,6 +702,7 @@
             }
         });
 
+        // 3. Loop Data Recare
         dataRecare.forEach(recare => {
             const rawDate = recare['TANGGAL'] || recare['TGL'];
             if(!rawDate) return;
@@ -726,6 +738,7 @@
             }
         });
 
+        // 4. Render Hasil Compare 
         Object.values(compareData).forEach(item => {
             const totalAmbil = item.qtyPutway + item.qtyRecare;
             const selisih = item.qtyBongkar - totalAmbil;
@@ -779,6 +792,14 @@
             </tr>
         `;
 
+        tbodyLokasi.innerHTML = htmlLokasi;
+        tfootLokasi.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align: right; padding-right: 24px;">TOTAL AMBIL:</td>
+                <td class="col-center mono" style="color: var(--primary);">${sumTabLokasiAmbil}</td>
+            </tr>
+        `;
+
         tbodyBongkar.innerHTML = htmlBongkar;
         tfootBongkar.innerHTML = `
             <tr>
@@ -825,6 +846,7 @@
         const wb = XLSX.utils.book_new();
 
         XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById('table-compare')), "Compare QTY");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById('table-lokasi')), "Lokasi Putway");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById('table-bongkar')), "Admin Bongkar");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById('table-putway')), "Permintaan Putway");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById('table-recare')), "Permintaan Recare");
