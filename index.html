@@ -124,7 +124,7 @@
         .btn-group {
             display: flex;
             gap: 12px;
-            flex-shrink: 0; /* Mencegah tombol mengecil/gepeng di desktop */
+            flex-shrink: 0; 
         }
 
         .btn {
@@ -140,10 +140,9 @@
             justify-content: center;
             gap: 8px;
             height: 42px; 
-            white-space: nowrap; /* Teks tidak turun ke baris baru */
+            white-space: nowrap; 
         }
 
-        /* Mencegah logo SVG gepeng */
         .btn svg {
             flex-shrink: 0;
             width: 16px;
@@ -488,16 +487,6 @@
         return 0; 
     }
 
-    // Fungsi pintar untuk mencari data di objek berdasarkan beberapa kemungkinan nama kolom
-    function getFlexibleValue(row, possibleKeys, fallback = '-') {
-        for (let key of possibleKeys) {
-            if (row[key] !== undefined && row[key] !== null && row[key] !== "") {
-                return row[key];
-            }
-        }
-        return fallback;
-    }
-
     async function fetchData(isBackgroundSync = false) {
         const btnSync = document.getElementById('btnSync');
         if (isBackgroundSync) {
@@ -592,7 +581,6 @@
         const tbodyPutway = document.querySelector('#table-putway tbody');
         const tfootPutway = document.querySelector('#table-putway tfoot');
         
-        // Tab Lokasi Putway
         const tbodyLokasi = document.querySelector('#table-lokasi tbody');
         const tfootLokasi = document.querySelector('#table-lokasi tfoot');
 
@@ -608,6 +596,10 @@
         let htmlBongkar = "", htmlStok = "", htmlPutway = "", htmlLokasi = "", htmlRecare = "", htmlCompare = "";
         
         const compareData = {};
+        
+        // Memori khusus untuk menyimpan lokasi rak berdasarkan NAMA SKU dan KODE SKU
+        const bongkarInfoByName = {};
+        const bongkarInfoBySku = {};
 
         let sumCompareBongkar = 0, sumComparePutway = 0, sumCompareRecare = 0, sumCompareSelisih = 0;
         let sumTabBongkar = 0, sumTabStok = 0, sumTabLokasiAmbil = 0;
@@ -618,11 +610,21 @@
         dataBongkar.forEach(row => {
             if(!row['TANGGAL']) return; 
             const dateOnly = getDateOnly(row['TANGGAL']);
-            const sku = row['KODE SKU'] || '';
-            const nama = row['NAMA SKU'] || '';
+            const sku = (row['KODE SKU'] || '').toString().trim();
+            const nama = (row['NAMA SKU'] || '').toString().trim();
+            const searchName = nama.toLowerCase();
+            
+            // Simpan info rak ke memori (diutamakan mencari NAMA SKU)
+            const rakData = row['DETAIL NOMOR RAK'] || '';
+            if (searchName && !bongkarInfoByName[searchName] && rakData) {
+                bongkarInfoByName[searchName] = rakData;
+            }
+            if (sku && !bongkarInfoBySku[sku] && rakData) {
+                bongkarInfoBySku[sku] = rakData;
+            }
 
             if (filterDate !== "ALL" && dateOnly !== filterDate) return; 
-            if (searchQuery && !sku.toLowerCase().includes(searchQuery) && !nama.toLowerCase().includes(searchQuery)) return;
+            if (searchQuery && !sku.toLowerCase().includes(searchQuery) && !searchName.includes(searchQuery)) return;
             
             const qtyBongkar = parseInt(row['QTY BONGKAR'] || 0);
             
@@ -664,11 +666,12 @@
             const rawDate = putway['TGL'] || putway['TANGGAL'];
             if(!rawDate) return;
             const putwayDate = getDateOnly(rawDate);
-            const sku = putway['KODE SKU'] || '';
-            const nama = putway['NAMA SKU'] || '';
+            const sku = (putway['KODE SKU'] || '').toString().trim();
+            const nama = (putway['NAMA SKU'] || '').toString().trim();
+            const searchName = nama.toLowerCase();
 
             if (filterDate !== "ALL" && putwayDate !== filterDate) return;
-            if (searchQuery && !sku.toLowerCase().includes(searchQuery) && !nama.toLowerCase().includes(searchQuery)) return;
+            if (searchQuery && !sku.toLowerCase().includes(searchQuery) && !searchName.includes(searchQuery)) return;
 
             const qtyPermintaan = parseInt(putway['TOTAL PERMINTAAN'] || 0);
             const qtyAmbil = parseInt(putway['QTY AMBIL'] || 0);
@@ -687,9 +690,9 @@
             sumTabPutwayPermintaan += qtyPermintaan;
             sumTabPutwayAmbil += qtyAmbil;
 
-            // Pencarian nama kolom Rak & Karung yang agresif khusus untuk sheet Putway
-            const noRak = getFlexibleValue(putway, ['NO. RAK', 'NO RAK', 'RAK', 'LOKASI RAK', 'NOMOR RAK', 'DETAIL NOMOR RAK']);
-            const noKarung = getFlexibleValue(putway, ['NO. KARUNG', 'NO KARUNG', 'KARUNG', 'NOMOR KARUNG']);
+            // LOKASI PUTWAY: Ambil No Rak berdasarkan NAMA SKU dari memori Bongkar, No Karung dari KARUNGAN CAMELIA
+            const noRak = bongkarInfoByName[searchName] || bongkarInfoBySku[sku] || '-';
+            const noKarung = putway['KARUNGAN CAMELIA'] || '-';
 
             htmlLokasi += `
                 <tr>
@@ -716,11 +719,12 @@
             const rawDate = recare['TANGGAL'] || recare['TGL'];
             if(!rawDate) return;
             const recareDate = getDateOnly(rawDate);
-            const sku = recare['KODE SKU'] || '';
-            const nama = recare['NAMA SKU'] || '';
+            const sku = (recare['KODE SKU'] || '').toString().trim();
+            const nama = (recare['NAMA SKU'] || '').toString().trim();
+            const searchName = nama.toLowerCase();
 
             if (filterDate !== "ALL" && recareDate !== filterDate) return;
-            if (searchQuery && !sku.toLowerCase().includes(searchQuery) && !nama.toLowerCase().includes(searchQuery)) return;
+            if (searchQuery && !sku.toLowerCase().includes(searchQuery) && !searchName.includes(searchQuery)) return;
 
             const qtyPermintaan = parseInt(recare['TOTAL PERMINTAAN'] || 0);
             const qtyAmbil = parseInt(recare['QTY AMBIL'] || 0);
