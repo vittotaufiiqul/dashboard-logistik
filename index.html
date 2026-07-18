@@ -124,6 +124,7 @@
         .btn-group {
             display: flex;
             gap: 12px;
+            flex-shrink: 0; /* Mencegah tombol mengecil/gepeng di desktop */
         }
 
         .btn {
@@ -139,6 +140,14 @@
             justify-content: center;
             gap: 8px;
             height: 42px; 
+            white-space: nowrap; /* Teks tidak turun ke baris baru */
+        }
+
+        /* Mencegah logo SVG gepeng */
+        .btn svg {
+            flex-shrink: 0;
+            width: 16px;
+            height: 16px;
         }
 
         .btn-export { background-color: var(--primary); color: var(--on-primary); }
@@ -306,7 +315,7 @@
         
         <div class="btn-group">
             <button class="btn btn-sync" id="btnSync" onclick="fetchData(true)">
-                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <polyline points="23 4 23 10 17 10"></polyline>
                     <polyline points="1 20 1 14 7 14"></polyline>
                     <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
@@ -314,7 +323,7 @@
                 Sync Data
             </button>
             <button class="btn btn-export" onclick="exportToExcel()">
-                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                     <polyline points="7 10 12 15 17 10"></polyline>
                     <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -356,7 +365,7 @@
         </table>
     </div>
 
-    <!-- TAB BARU: LOKASI PUTWAY (PICK LIST) -->
+    <!-- TAB: LOKASI PUTWAY (PICK LIST) -->
     <div id="tab-lokasi" class="tab-content">
         <table id="table-lokasi">
             <thead>
@@ -479,6 +488,16 @@
         return 0; 
     }
 
+    // Fungsi pintar untuk mencari data di objek berdasarkan beberapa kemungkinan nama kolom
+    function getFlexibleValue(row, possibleKeys, fallback = '-') {
+        for (let key of possibleKeys) {
+            if (row[key] !== undefined && row[key] !== null && row[key] !== "") {
+                return row[key];
+            }
+        }
+        return fallback;
+    }
+
     async function fetchData(isBackgroundSync = false) {
         const btnSync = document.getElementById('btnSync');
         if (isBackgroundSync) {
@@ -527,10 +546,10 @@
             if (isBackgroundSync) {
                 btnSync.disabled = false;
                 btnSync.innerHTML = `
-                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <polyline points="23 4 23 10 17 10"></polyline>
                     <polyline points="1 20 1 14 7 14"></polyline>
-                    <path d="M3.51 9a9 9 0 0 0 20.49 15"></path>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
                 </svg> Sync Data`;
             }
         }
@@ -589,7 +608,6 @@
         let htmlBongkar = "", htmlStok = "", htmlPutway = "", htmlLokasi = "", htmlRecare = "", htmlCompare = "";
         
         const compareData = {};
-        const bongkarInfo = {}; // Kamus pintar untuk mencari No Rak dan No Karung
 
         let sumCompareBongkar = 0, sumComparePutway = 0, sumCompareRecare = 0, sumCompareSelisih = 0;
         let sumTabBongkar = 0, sumTabStok = 0, sumTabLokasiAmbil = 0;
@@ -602,14 +620,6 @@
             const dateOnly = getDateOnly(row['TANGGAL']);
             const sku = row['KODE SKU'] || '';
             const nama = row['NAMA SKU'] || '';
-            
-            // Simpan info rak & karung ke kamus memori untuk diakses oleh tab Lokasi
-            if (!bongkarInfo[sku]) {
-                bongkarInfo[sku] = {
-                    karung: row['NOMOR KARUNG'] || '-',
-                    rak: row['DETAIL NOMOR RAK'] || row['LOKASI KARUNG'] || '-'
-                };
-            }
 
             if (filterDate !== "ALL" && dateOnly !== filterDate) return; 
             if (searchQuery && !sku.toLowerCase().includes(searchQuery) && !nama.toLowerCase().includes(searchQuery)) return;
@@ -649,7 +659,7 @@
             }
         });
 
-        // 2. Loop Data Putway (Sekaligus membangun tab Lokasi Putway)
+        // 2. Loop Data Putway & Lokasi Putway
         dataPutway.forEach(putway => {
             const rawDate = putway['TGL'] || putway['TANGGAL'];
             if(!rawDate) return;
@@ -677,10 +687,9 @@
             sumTabPutwayPermintaan += qtyPermintaan;
             sumTabPutwayAmbil += qtyAmbil;
 
-            // Render Tab Lokasi Putway 
-            const bInfo = bongkarInfo[sku] || {};
-            const noRak = putway['NO RAK'] || putway['DETAIL NOMOR RAK'] || bInfo.rak || '-';
-            const noKarung = putway['NO KARUNG'] || putway['NOMOR KARUNG'] || bInfo.karung || '-';
+            // Pencarian nama kolom Rak & Karung yang agresif khusus untuk sheet Putway
+            const noRak = getFlexibleValue(putway, ['NO. RAK', 'NO RAK', 'RAK', 'LOKASI RAK', 'NOMOR RAK', 'DETAIL NOMOR RAK']);
+            const noKarung = getFlexibleValue(putway, ['NO. KARUNG', 'NO KARUNG', 'KARUNG', 'NOMOR KARUNG']);
 
             htmlLokasi += `
                 <tr>
