@@ -240,6 +240,7 @@
 
         .col-center { text-align: center; }
         .col-nama { min-width: 200px; white-space: normal; line-height: 1.5; }
+        .col-notes { min-width: 150px; color: var(--warning); font-style: italic; }
 
         .status-badge {
             display: inline-flex;
@@ -309,7 +310,7 @@
 
         <div class="filter-group search-group">
             <label for="searchInput">Cari:</label>
-            <input type="text" id="searchInput" placeholder="Ketik Kode / Nama SKU..." onkeyup="applyFilter()">
+            <input type="text" id="searchInput" placeholder="Ketik Kode / Nama SKU / No Karung..." onkeyup="applyFilter()">
         </div>
         
         <div class="btn-group">
@@ -375,6 +376,7 @@
                     <th>No. Rak</th>
                     <th>No. Karung</th>
                     <th class="col-center">QTY Ambil</th>
+                    <th>Notes</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -487,6 +489,16 @@
         return 0; 
     }
 
+    // Fungsi pintar untuk mencari data di objek berdasarkan beberapa kemungkinan nama kolom
+    function getFlexibleValue(row, possibleKeys, fallback = '-') {
+        for (let key of possibleKeys) {
+            if (row[key] !== undefined && row[key] !== null && row[key] !== "") {
+                return row[key];
+            }
+        }
+        return fallback;
+    }
+
     async function fetchData(isBackgroundSync = false) {
         const btnSync = document.getElementById('btnSync');
         if (isBackgroundSync) {
@@ -538,7 +550,7 @@
                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <polyline points="23 4 23 10 17 10"></polyline>
                     <polyline points="1 20 1 14 7 14"></polyline>
-                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    <path d="M3.51 9a9 9 0 0 0 20.49 15"></path>
                 </svg> Sync Data`;
             }
         }
@@ -613,6 +625,7 @@
             const sku = (row['KODE SKU'] || '').toString().trim();
             const nama = (row['NAMA SKU'] || '').toString().trim();
             const searchName = nama.toLowerCase();
+            const searchKarungBongkar = (row['NOMOR KARUNG'] || '').toString().toLowerCase();
             
             // Simpan info rak ke memori (diutamakan mencari NAMA SKU)
             const rakData = row['DETAIL NOMOR RAK'] || '';
@@ -623,8 +636,12 @@
                 bongkarInfoBySku[sku] = rakData;
             }
 
+            // Implementasi Filter Pencarian untuk SKU, Nama, dan No Karung
             if (filterDate !== "ALL" && dateOnly !== filterDate) return; 
-            if (searchQuery && !sku.toLowerCase().includes(searchQuery) && !searchName.includes(searchQuery)) return;
+            if (searchQuery && 
+                !sku.toLowerCase().includes(searchQuery) && 
+                !searchName.includes(searchQuery) && 
+                !searchKarungBongkar.includes(searchQuery)) return;
             
             const qtyBongkar = parseInt(row['QTY BONGKAR'] || 0);
             
@@ -669,12 +686,18 @@
             const sku = (putway['KODE SKU'] || '').toString().trim();
             const nama = (putway['NAMA SKU'] || '').toString().trim();
             const searchName = nama.toLowerCase();
+            const searchKarungPutway = (putway['KARUNGAN CAMELIA'] || '').toString().toLowerCase();
 
+            // Implementasi Filter Pencarian untuk SKU, Nama, dan No Karung
             if (filterDate !== "ALL" && putwayDate !== filterDate) return;
-            if (searchQuery && !sku.toLowerCase().includes(searchQuery) && !searchName.includes(searchQuery)) return;
+            if (searchQuery && 
+                !sku.toLowerCase().includes(searchQuery) && 
+                !searchName.includes(searchQuery) && 
+                !searchKarungPutway.includes(searchQuery)) return;
 
             const qtyPermintaan = parseInt(putway['TOTAL PERMINTAAN'] || 0);
             const qtyAmbil = parseInt(putway['QTY AMBIL'] || 0);
+            const notes = putway['NOTES'] || '-';
 
             htmlPutway += `
                 <tr>
@@ -702,6 +725,7 @@
                     <td>${noRak}</td>
                     <td>${noKarung}</td>
                     <td class="col-center mono">${qtyAmbil}</td>
+                    <td class="col-notes">${notes}</td>
                 </tr>
             `;
             sumTabLokasiAmbil += qtyAmbil;
@@ -722,9 +746,14 @@
             const sku = (recare['KODE SKU'] || '').toString().trim();
             const nama = (recare['NAMA SKU'] || '').toString().trim();
             const searchName = nama.toLowerCase();
+            const searchKarungRecare = (recare['KARUNGAN CAMELIA'] || recare['NOMOR KARUNG'] || '').toString().toLowerCase();
 
+            // Implementasi Filter Pencarian untuk SKU, Nama, dan No Karung
             if (filterDate !== "ALL" && recareDate !== filterDate) return;
-            if (searchQuery && !sku.toLowerCase().includes(searchQuery) && !searchName.includes(searchQuery)) return;
+            if (searchQuery && 
+                !sku.toLowerCase().includes(searchQuery) && 
+                !searchName.includes(searchQuery) && 
+                !searchKarungRecare.includes(searchQuery)) return;
 
             const qtyPermintaan = parseInt(recare['TOTAL PERMINTAAN'] || 0);
             const qtyAmbil = parseInt(recare['QTY AMBIL'] || 0);
@@ -810,6 +839,7 @@
             <tr>
                 <td colspan="5" style="text-align: right; padding-right: 24px;">TOTAL AMBIL:</td>
                 <td class="col-center mono" style="color: var(--primary);">${sumTabLokasiAmbil}</td>
+                <td></td>
             </tr>
         `;
 
