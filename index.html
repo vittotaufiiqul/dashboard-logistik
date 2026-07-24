@@ -333,7 +333,6 @@
         </div>
     </div>
 
-    <!-- Container Tabs Geser -->
     <div class="tabs">
         <button class="tab-btn active" onclick="openTab('tab-compare')">Compare QTY</button>
         <button class="tab-btn" onclick="openTab('tab-lokasi')">Lokasi Putway</button>
@@ -345,7 +344,6 @@
 
     <div id="loading">Memuat data dari Google Sheets...</div>
 
-    <!-- TAB: COMPARE -->
     <div id="tab-compare" class="tab-content active">
         <table id="table-compare">
             <thead>
@@ -365,7 +363,6 @@
         </table>
     </div>
 
-    <!-- TAB: LOKASI PUTWAY (PICK LIST) -->
     <div id="tab-lokasi" class="tab-content">
         <table id="table-lokasi">
             <thead>
@@ -384,7 +381,6 @@
         </table>
     </div>
 
-    <!-- TAB: BONGKAR -->
     <div id="tab-bongkar" class="tab-content">
         <table id="table-bongkar">
             <thead>
@@ -403,7 +399,6 @@
         </table>
     </div>
 
-    <!-- TAB: PUTWAY -->
     <div id="tab-putway" class="tab-content">
         <table id="table-putway">
             <thead>
@@ -422,7 +417,6 @@
         </table>
     </div>
 
-    <!-- TAB: RECARE -->
     <div id="tab-recare" class="tab-content">
         <table id="table-recare">
             <thead>
@@ -441,7 +435,6 @@
         </table>
     </div>
 
-    <!-- TAB: STOK -->
     <div id="tab-stok" class="tab-content">
         <table id="table-stok">
             <thead>
@@ -713,8 +706,8 @@
             sumTabPutwayPermintaan += qtyPermintaan;
             sumTabPutwayAmbil += qtyAmbil;
 
-            // LOKASI PUTWAY: Ambil No Rak berdasarkan NAMA SKU dari memori Bongkar, No Karung dari KARUNGAN CAMELIA
-            const noRak = bongkarInfoByName[searchName] || bongkarInfoBySku[sku] || '-';
+            // LOKASI PUTWAY: Ambil No Rak prioritas dari KET Putway, jika kosong ambil dari memori Bongkar
+            const noRak = putway['KET'] || bongkarInfoByName[searchName] || bongkarInfoBySku[sku] || '-';
             const noKarung = putway['KARUNGAN CAMELIA'] || '-';
 
             htmlLokasi += `
